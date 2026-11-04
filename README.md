@@ -1,6 +1,6 @@
 # Fronts du Temps
 
-Tower defense évolutif en side-scroll, de la Préhistoire à l'ère moderne.
+Tower defense évolutif en side-scroll, de la Préhistoire à l'ère moderne : Humains contre Créatures.
 Jeu HTML5/Canvas en un seul fichier (`www/index.html`), empaqueté en application **Android**.
 
 ## Installer sur Android
@@ -22,6 +22,9 @@ Compiler soi-même (Android SDK + JDK 17) : `cd android && gradle assembleReleas
 Ouvre `www/index.html` (PC ou mobile).
 
 ## Principe
+- **Deux camps au choix** : les **Humains** (de la massue au char de combat) ou les **Créatures**
+  (Profonds, Yeux rôdeurs, Molosses, Shoggoths, Rejetons…). L'IA joue toujours l'autre camp.
+- Ambiance lovecraftienne : nuits étranges, tentacules colossales, monolithes à runes, œil cosmique.
 - **Or** : produit des unités et achète des tourelles. On en gagne en tuant des ennemis (+ petit revenu passif).
 - **XP ★** : gagnée au combat ; permet d'**évoluer** vers l'époque suivante (8 époques).
 - **Attaque spéciale** propre à chaque époque (recharge 45 s).
