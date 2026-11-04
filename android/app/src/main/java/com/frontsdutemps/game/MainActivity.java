@@ -9,6 +9,7 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.webkit.ValueCallback;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -68,8 +69,10 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
         // Le jeu gère le retour (pause / menu) ; s'il renvoie false, on quitte.
-        web.evaluateJavascript("window.androidBack ? window.androidBack() : false", value -> {
-            if (!"true".equals(value)) finish();
+        web.evaluateJavascript("window.androidBack ? window.androidBack() : false", new ValueCallback<String>() {
+            @Override public void onReceiveValue(String value) {
+                if (!"true".equals(value)) finish();
+            }
         });
     }
 

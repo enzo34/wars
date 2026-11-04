@@ -4,19 +4,23 @@ Tower defense évolutif en side-scroll, de la Préhistoire à l'ère moderne : H
 Jeu HTML5/Canvas en un seul fichier (`www/index.html`), empaqueté en application **Android**.
 
 ## Installer sur Android
-1. Sur ton téléphone, ouvre la page **Releases** du dépôt et télécharge `FrontsDuTemps.apk` (dernière version).
-2. Ouvre le fichier et autorise « Installer des applis inconnues » pour ton navigateur si Android le demande.
-3. Lance **Fronts du Temps** : plein écran, en paysage, hors ligne.
+1. Sur ton téléphone, télécharge l'APK :
+   **https://github.com/enzo34/wars/raw/ccr-2b79d7df-9zvfgl/FrontsDuTemps.apk**
+2. Ouvre le fichier et autorise « Installer des applis inconnues » si Android le demande.
+3. Lance **Fronts du Temps** (plein écran, paysage, hors ligne).
 
-Chaque push qui modifie `www/` ou `android/` recompile l'APK via GitHub Actions
-(`.github/workflows/android.yml`) et publie une nouvelle Release.
+### Recompiler l'APK
+Sans Android Studio ni SDK Google (Ubuntu/Debian) :
+```
+sudo apt install aapt apksigner zipalign dalvik-exchange openjdk-17-jdk
+android/build-apk.sh            # produit FrontsDuTemps.apk à la racine
+```
+Le framework Android vient de Maven Central (Robolectric `android-all`).
+La clé de signature est lue dans `$FDT_KEYSTORE` / `$FDT_KS_PASS`, sinon une clé locale est générée
+dans `android/build/` (non versionnée). Avec une clé différente, il faut désinstaller l'ancienne version
+avant d'installer la nouvelle.
 
-Signature : le workflow génère une clé une fois et la garde dans le cache GitHub Actions, pour que
-les nouvelles versions s'installent par-dessus l'ancienne. Ce cache expire après 7 jours sans build :
-pour une clé définitive, ajoute les secrets `ANDROID_KEYSTORE_BASE64` (keystore encodé en base64,
-alias `fdt`) et `ANDROID_KEYSTORE_PASSWORD` dans les paramètres du dépôt.
-
-Compiler soi-même (Android SDK + JDK 17) : `cd android && gradle assembleRelease`.
+Le projet Gradle (`android/`) et le workflow GitHub Actions restent utilisables avec un SDK Android complet.
 
 ## Jouer dans un navigateur
 Ouvre `www/index.html` (PC ou mobile).
