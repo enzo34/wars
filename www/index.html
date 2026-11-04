@@ -540,16 +540,23 @@ function ai(s){
   const threat = o.units.filter(u => Math.abs(u.x - s.front) < 900).length;
   if(s.specialCd<=0 && (threat>=5 || (threat>=2 && s.hp < s.maxHp*0.5))) useSpecial(s);
   for(let i=0;i<s.slots;i++){ const t=s.turrets[i]; if(t && t.def.era < s.era && s.gold > TD(s.era,t.def.k,s.fac).cost*2.5){ sellTurret(s,i); buyTurret(s,Math.min(3,t.def.k+1)); } }
+  // plan de production : l'IA choisit une unité et économise pour elle (sauf danger)
+  const W8 = {facile:[0.45,0.3,0.17,0.08], normal:[0.32,0.28,0.22,0.18], difficile:[0.26,0.26,0.24,0.24]}[s===G.e ? G.diffKey : "normal"] || [0.32,0.28,0.22,0.18];
+  if(s.aiPlan===undefined || s.aiPlanEra!==s.era){ const r = Math.random(); let acc = 0, k = 0; for(; k<3; k++){ acc += W8[k]; if(r < acc) break; } s.aiPlan = k; s.aiPlanEra = s.era; }
+  const planCost = UD(s.era, s.aiPlan, s.fac).cost;
+  const reserve = s.aiPlan>=2 ? planCost : 0;
   const free = s.turrets.slice(0,s.slots).some(t=>!t);
   if(free && G.t>20){
-    for(let k=3;k>=0;k--){ const c=TD(s.era,k,s.fac).cost; if(s.gold >= c*1.4 && Math.random()<0.5){ buyTurret(s,k); break; } }
-  } else if(!free && s.slots<4 && s.gold > SLOT_COST[s.slots]*1.6) buySlot(s);
+    for(let k=3;k>=0;k--){ const c=TD(s.era,k,s.fac).cost; if(s.gold >= c*1.4 + reserve && Math.random()<0.5){ buyTurret(s,k); break; } }
+  } else if(!free && s.slots<4 && s.gold > SLOT_COST[s.slots]*1.6 + reserve) buySlot(s);
   const pressure = o.units.length - s.units.length;
+  const danger = o.units.some(u => Math.abs(u.x - s.front) < 420) || pressure > 3;
   if(s.queue.length < (pressure>2?4:2)){
-    const r = Math.random();
-    let k = r<0.4?0 : r<0.72?1 : r<0.9?2 : 3;
-    while(k>0 && s.gold < UD(s.era,k,s.fac).cost) k--;
-    if(s.gold >= UD(s.era,k,s.fac).cost) queueUnit(s,k);
+    if(s.gold >= planCost){ queueUnit(s, s.aiPlan); s.aiPlan = undefined; }
+    else if(danger || s.queue.length===0 && s.units.length < 2){
+      let k = Math.min(s.aiPlan, 1); while(k>0 && s.gold < UD(s.era,k,s.fac).cost) k--;
+      if(s.gold >= UD(s.era,k,s.fac).cost) queueUnit(s,k);
+    }
   }
 }
 function endGame(won){
@@ -2320,7 +2327,7 @@ function refreshHud(){
   // XP comparée
   for(const [sd, id] of [[G.p,"P"],[G.e,"E"]]){
     const lo2 = sd.era ? XP_REQ[sd.era-1] : 0, hi2 = XP_REQ[sd.era] ?? lo2;
-    setText("rv"+id, (id==="P"?"Toi ":"Ennemi ")+(sd.era+1)+"/8 ★"+fmtN(sd.xp));
+    setHTML("rv"+id, (id==="P"?"Toi ":"Ennemi ")+(sd.era+1)+"/8 ★"+fmtN(sd.xp) + (id==="E" ? ` <b style="color:var(--gold)">● ${fmtN(sd.gold)}</b>` : ""));
     $("rb"+id).style.width = sd.era<7 ? Math.max(0,Math.min(100,(sd.xp-lo2)/(hi2-lo2)*100)).toFixed(1)+"%" : "100%";
   }
 }
