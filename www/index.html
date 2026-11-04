@@ -199,7 +199,7 @@
 <canvas id="intro" style="position:fixed;inset:0;width:100%;height:100%;z-index:60;background:#000;display:none"></canvas>
 <div id="rotate"><div><b>⟳</b>Tourne ton téléphone en mode paysage</div></div>
 
-<script src="sprites/rig_h2_0.js"></script>
+<script src="sprites/rigs.js"></script>
 <script>
 "use strict";
 // compatibilité anciennes WebView
@@ -1545,7 +1545,8 @@ function drawRig(d, r, team, walk, moving){
   const P = {farThigh:0,farShin:0,nearThigh:0,nearShin:0,head:0,arm:0,cloak:0,bob:0,lean:0,sword:0.95,wave:0};
   const A = r.attack==="thrust" ? RIG_THRUST : r.attack==="shoot" ? RIG_SHOOT : RIG_SWING;
   if(p>0){ for(const [k,n] of [["arm","arm"],["sword","sword"],["lean","lean"],["nearThigh","nT"],["nearShin","nS"],["farThigh","fT"],["head","head"],["cloak","cloak"]]) P[k] = rigK(A[n], p);
-    P.wave = Math.sin(p*9)*0.6; P.bob = rigK([[0,0],[0.3,-3],[0.44,3.5],[0.7,2.5],[1,0]],p); }
+    P.wave = Math.sin(p*9)*0.6; P.bob = rigK([[0,0],[0.3,-3],[0.44,3.5],[0.7,2.5],[1,0]],p);
+    if(!pr.arm && r.attack!=="shoot"){ P.lean *= 1.7; P.lunge = rigK([[0,0],[0.3,-6],[0.46,16],[0.7,12],[1,0]],p); } }
   else if(mv){ const sn = Math.sin(ph), cs = Math.cos(ph), sn2 = Math.sin(ph*2);
     P.nearThigh = -0.38*sn; P.farThigh = 0.38*sn;
     P.nearShin = 0.8*Math.max(0,cs) + 0.08; P.farShin = 0.8*Math.max(0,-cs) + 0.08;   // genou qui plie au passage + léger fléchi permanent
@@ -1556,7 +1557,7 @@ function drawRig(d, r, team, walk, moving){
   const part = (n, rot) => { const q = pr[n]; ctx.translate(q.px,q.py); ctx.rotate(rot); ctx.translate(-q.px,-q.py); };
   const img = (n, alt) => ctx.drawImage(alt || I[n], pr[n].x, pr[n].y);
   const body = () => { ctx.translate(hipX,hipY); ctx.rotate(P.lean); ctx.translate(-hipX,-hipY); };
-  ctx.save(); ctx.scale(sc,sc); ctx.translate(-r.W*0.49, -r.ground + P.bob);
+  ctx.save(); ctx.scale(sc,sc); ctx.translate(-r.W*0.49 + (P.lunge||0), -r.ground + P.bob);
   // cape : découpée en bandes qui ondulent (mouvement secondaire), teintée aux couleurs du camp
   if(pr.cloak){ ctx.save(); body(); part("cloak", P.cloak);
     const tc = r.tint[team] || (r.tint[team] = rigShade(I.cloak, team, 0.38)), N = 10, bh = tc.height/N, q = pr.cloak;
@@ -1567,6 +1568,12 @@ function drawRig(d, r, team, walk, moving){
   leg("farThigh","farShin",true); leg("nearThigh","nearShin",false);
   ctx.save(); body();
   img("torso");
+  if(!pr.arm && r.attack!=="shoot" && p>0.27 && p<0.66){   // croissant de vent sans bras découpé
+    const cx = r.W*0.55, cy = r.H*0.34, R1 = r.H*0.42, a0 = rigK([[0.27,-2.3],[0.46,0.5],[0.66,0.7]],p), fade = p>0.5 ? 1-(p-0.5)/0.16 : 1;
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    for(let j=0;j<9;j++){ const b0 = a0 - j*0.16, b1 = b0 - 0.16; ctx.globalAlpha = 0.45*(1-j/9)*fade; ctx.fillStyle = j<2 ? "#ffffff" : "#ffe7b8";
+      ctx.beginPath(); ctx.arc(cx, cy, R1, b1, b0); ctx.arc(cx, cy, R1*(0.62+0.2*j/9), b0, b1, true); ctx.closePath(); ctx.fill(); }
+    ctx.restore(); }
   if(pr.head){ ctx.save(); part("head", P.head - P.lean*0.4); img("head"); ctx.restore(); }
   if(pr.arm){
     const S = r.sword!==false ? rigSword(30) : null;
