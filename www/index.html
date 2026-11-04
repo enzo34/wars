@@ -277,6 +277,7 @@ function newGame(diff, demo=false, fac="h"){
   G.tentacles = []; G.rituals = [];
   G.clouds = Array.from({length:7}, (_,i)=>({x:hash(i+1)*1400, y:90+hash(i+9)*90, s:0.6+hash(i+3)*0.8}));
   window.__G = G;
+  prebake(G.p); prebake(G.e);
   buildButtons(); refreshHud();
 }
 const opp = s => s===G.p ? G.e : G.p;
@@ -295,6 +296,7 @@ function canEvolve(s){ return s.era<7 && s.xp>=XP_REQ[s.era]; }
 function evolve(s){
   if(!canEvolve(s)) return;
   const r = s.hp/s.maxHp; s.era++; s.maxHp = baseMaxHp(s.era); s.hp = Math.round(s.maxHp*r);
+  prebake(s);
   if(s===G.p){ flash("✦ Nouvelle époque : "+ERAS[s.era].name); buildButtons(); sfx("evolve"); G.evolveFx = 1.2; }
 }
 function useSpecial(s){
@@ -844,12 +846,60 @@ function drawTurretBody(d, team, ang, recoil=0){
 }
 
 // ---------- unités ----------
+// ---------- sprites pré-rendus (contour épais + ombrage lunaire) ----------
+// limites du dessin de chaque silhouette (gauche, droite, haut) en unités non mises à l'échelle
+const BOUNDS = {foot:[20,38,64], flame:[22,34,64], mount:[40,48,82], beast:[40,58,98], ram:[36,48,62], wagon:[36,48,56], cannon:[36,48,42],
+  tank:[40,66,58], jeep:[34,40,52], deep:[20,36,54], eye:[20,26,52], hound:[44,42,48], shoggoth:[36,48,50], spawn:[46,40,104]};
+let SPR = {}, SPR_R = 0;
+function postFx(src, t){
+  const w = src.width, h = src.height;
+  const sil = document.createElement("canvas"); sil.width = w; sil.height = h; const sc = sil.getContext("2d");
+  sc.drawImage(src,0,0); sc.globalCompositeOperation = "source-in"; sc.fillStyle = "#0b0705"; sc.fillRect(0,0,w,h);
+  const o = document.createElement("canvas"); o.width = w; o.height = h; const c = o.getContext("2d");
+  for(const [dx,dy] of [[t,0],[-t,0],[0,t],[0,-t],[t*0.7,t*0.7],[-t*0.7,t*0.7],[t*0.7,-t*0.7],[-t*0.7,-t*0.7]]) c.drawImage(sil,dx,dy);
+  c.drawImage(src,0,0);
+  c.globalCompositeOperation = "source-atop";
+  const g = c.createLinearGradient(w*0.9, 0, w*0.15, h);
+  g.addColorStop(0, "rgba(220,240,255,.30)"); g.addColorStop(0.42, "rgba(255,255,255,0)"); g.addColorStop(0.75, "rgba(20,5,40,.12)"); g.addColorStop(1, "rgba(10,0,25,.38)");
+  c.fillStyle = g; c.fillRect(0,0,w,h);
+  // liseré de lumière en haut
+  c.globalCompositeOperation = "source-atop"; c.globalAlpha = 0.35; c.drawImage(sil, 0, Math.max(1,t*0.8)); c.globalAlpha = 1;
+  c.globalCompositeOperation = "destination-over";
+  return o;
+}
+function sprite(d){
+  const Rr = Math.max(1.2, scale);
+  if(Math.abs(Rr-SPR_R) > 0.08){ SPR = {}; SPR_R = Rr; }
+  const key = d.fac+d.era+"_"+d.k; if(SPR[key]) return SPR[key];
+  const b = BOUNDS[d.visual], k = US*Rr, pad = 4;
+  const w = Math.ceil((b[0]+b[1])*k)+pad*2, h = Math.ceil((b[2]+6)*k)+pad*2, ox = b[0]*k+pad, oy = b[2]*k+pad;
+  const team = d.fac==="c" ? "#a855f7" : "#3b82f6", th = Math.max(1.5, Rr*1.1);
+  const mk = (walk, atk, moving) => {
+    const c2 = document.createElement("canvas"); c2.width = w; c2.height = h;
+    const prev = ctx; ctx = c2.getContext("2d");
+    try{ ctx.translate(ox,oy); ctx.scale(Rr,Rr); drawUnitBody(d, team, walk, atk, false, moving); } finally { ctx = prev; }
+    return postFx(c2, th);
+  };
+  const per = Math.PI*2/9, walkF = [], atkF = [];
+  for(let i=0;i<8;i++) walkF.push(mk(i/8*per, 0, true));
+  for(let j=0;j<4;j++) atkF.push(mk(0, 0.25*(1-(j+0.5)/4), false));
+  return SPR[key] = {walkF, atkF, idle: mk(0,0,false), w, h, ox, oy, R:Rr};
+}
+function unitFrame(u){
+  const S = sprite(u.def);
+  if(u.atk>0) return [S, S.atkF[Math.min(3, Math.floor((1-u.atk/0.25)*4))]];
+  if(u.moving){ const ph = ((u.walk*9)/(Math.PI*2)) % 1; return [S, S.walkF[Math.floor(ph*8) % 8]]; }
+  return [S, S.idle];
+}
+function prebake(s){ for(let k=0;k<4;k++) sprite(UD(s.era,k,s.fac)); }
 function drawUnit(u, s){
   const d=u.def;
   ctx.save(); ctx.translate(u.x, GY);
-  ctx.fillStyle="rgba(0,0,0,.28)"; ell(0,1,d.w*0.55,3.5); ctx.fill();
+  ctx.fillStyle="rgba(0,0,0,.32)"; ell(0,1,d.w*0.58,3.8); ctx.fill();
   if(s.dir<0) ctx.scale(-1,1);
-  drawUnitBody(d, s.team, u.walk, u.atk, u.hit>0, u.moving);
+  const [S, f] = unitFrame(u);
+  if(u.hit>0) ctx.filter = "brightness(2.3)";
+  ctx.drawImage(f, -S.ox/S.R, -S.oy/S.R, S.w/S.R, S.h/S.R);
   ctx.restore();
   const w = Math.max(22, d.w*0.8), r = Math.max(0,u.hp/d.hp);
   if(r<1){
@@ -1193,8 +1243,10 @@ function drawCorpse(c){
   ctx.save(); ctx.globalAlpha = Math.max(0, 1 - t/1.4);
   ctx.translate(u.x, GY); if(c.side.dir<0) ctx.scale(-1,1);
   const veh = !ORG.has(d.visual) || d.visual==="shoggoth" || d.visual==="spawn";
-  if(veh){ drawUnitBody(d, "#1c1917", u.walk, 0, false, false); ctx.globalCompositeOperation="source-atop"; ctx.fillStyle="rgba(20,15,10,.65)"; ctx.fillRect(-60,-90,120,100); }
-  else { ctx.rotate(-Math.min(1, t*2.2)*Math.PI/2*0.92); drawUnitBody(d, c.side.team, u.walk, 0, false, false); }
+  const S = sprite(d);
+  if(veh) ctx.filter = "brightness(0.35)";
+  else ctx.rotate(-Math.min(1, t*2.2)*Math.PI/2*0.92);
+  ctx.drawImage(S.idle, -S.ox/S.R, -S.oy/S.R, S.w/S.R, S.h/S.R);
   ctx.restore();
 }
 function drawProj(p){
@@ -1387,7 +1439,7 @@ function iconCanvas(draw){
   const c = document.createElement("canvas"); c.width=120; c.height=90;
   const prev = ctx; ctx = c.getContext("2d");
   try{ draw(); } finally { ctx = prev; }
-  return c;
+  return postFx(c, 2);
 }
 function unitIcon(d, team){
   return iconCanvas(()=>{
