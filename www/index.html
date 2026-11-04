@@ -59,12 +59,29 @@
   .qi.tot{width:auto;padding:0 6px;color:var(--mut);font-weight:600}
   .qi{width:22px;height:22px;border-radius:6px;background:var(--glass);border:1px solid var(--line);display:grid;place-items:center;font-size:10px;font-weight:800;position:relative;overflow:hidden}
   .qi i{position:absolute;left:0;bottom:0;height:3px;background:var(--ok)}
+  #bossbar{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(6px,env(safe-area-inset-top)) + 100px);width:min(420px,46vw);padding:4px 10px;border-radius:8px;pointer-events:none;text-align:center;font-family:Georgia,serif;font-size:12px;color:#fca5a5}
+  .bb{height:7px;border-radius:4px;background:#000a;margin-top:3px;overflow:hidden;border:1px solid #7f1d1d}
+  .bb i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#7f1d1d,#dc2626,#f87171)}
+  #modeInfo{font-family:Georgia,serif;color:#fde68a}
+  .modes{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+  @media (max-width:560px){.modes{grid-template-columns:repeat(2,1fr)}}
+  .mode{padding:8px 6px;border-radius:12px;border:1px solid #ffffff22;background:linear-gradient(#2a1e1b,#140e0d);text-align:center;display:flex;flex-direction:column;gap:2px;align-items:center}
+  .mode .e{font-size:20px} .mode b{font-family:Georgia,serif;font-size:13px} .mode small{color:var(--mut);font-weight:500;font-size:10.5px;line-height:1.2}
+  .mode:active{transform:scale(.96)}
+  .mlist{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+  @media (max-width:560px){.mlist{grid-template-columns:repeat(2,1fr)}}
+  .mis{padding:7px;border-radius:10px;border:1px solid #ffffff22;background:#1e1614;text-align:left;font-size:11px}
+  .mis b{display:block;font-family:Georgia,serif;font-size:12px} .mis .st{color:#fbbf24;letter-spacing:2px} .mis:disabled{opacity:.4}
+  .upg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+  @media (max-width:560px){.upg{grid-template-columns:repeat(2,1fr)}}
+  .up{padding:7px;border-radius:10px;border:1px solid #ffffff22;background:#1e1614;text-align:left;font-size:11px}
+  .up b{display:block;font-family:Georgia,serif;font-size:12px} .up .lv{color:#fbbf24} .up:disabled{opacity:.45}
   #rival{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(6px,env(safe-area-inset-top)) + 75px);width:min(380px,40vw);display:flex;gap:8px;padding:3px 8px;border-radius:8px;font-size:10px;pointer-events:none}
   .rv{flex:1;display:flex;align-items:center;gap:5px;white-space:nowrap}
   .rb{flex:1;height:5px;border-radius:3px;background:#0009;overflow:hidden}
   .rb i{display:block;height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#a5f3fc)}
   .rb.e i{background:linear-gradient(90deg,#c026d3,#f0abfc)}
-  #msg{position:absolute;left:50%;top:calc(max(6px,env(safe-area-inset-top)) + 100px);transform:translateX(-50%) translateY(-6px);padding:7px 14px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;font-weight:700}
+  #msg{position:absolute;left:50%;top:calc(max(6px,env(safe-area-inset-top)) + 136px);transform:translateX(-50%) translateY(-6px);padding:7px 14px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;font-weight:700}
   #msg.show{opacity:1;transform:translateX(-50%)}
   #tip{position:absolute;display:none;padding:8px 10px;border-radius:10px;font-size:12px;font-weight:600;pointer-events:none;min-width:150px;z-index:5}
   #tip b{font-size:13px;display:block;margin-bottom:3px}
@@ -101,10 +118,12 @@
 <div id="stage">
   <canvas id="c"></canvas>
   <canvas id="mini" class="glass"></canvas>
+    <div id="bossbar" class="glass" style="display:none"><b id="bossName"></b><div class="bb"><i id="bossHp"></i></div></div>
     <div id="rival" class="glass"><div class="rv"><span id="rvP">Toi 1/8</span><div class="rb"><i id="rbP"></i></div></div><div class="rv"><span id="rvE">Ennemi 1/8</span><div class="rb e"><i id="rbE"></i></div></div></div>
   <div id="top">
     <div class="pill glass" id="era"><small>1/8</small>Préhistoire</div>
     <div class="pill glass" id="clock">🌙 21:00</div>
+    <div class="pill glass" id="modeInfo" style="display:none"></div>
     <div class="pill glass"><span class="coin"></span><span id="gold">0</span></div>
     <div class="pill glass" id="xpWrap"><div id="xpTxt"><span class="star">★</span><span id="xp">0</span></div><div id="xpBar"><i></i></div></div>
     <button class="ibtn glass" id="evolve">Évoluer ▲</button>
@@ -280,16 +299,78 @@ function sfx(type, vol=1){
 //  ÉTAT
 // =====================================================================
 let G = null;
+// ---------- boss : un par époque et par camp ----------
+const BOSS = {
+  h: [ {k:3, name:"Grokh, le Mammouth-Roi", sc:1.55}, {k:3, name:"Le Polémarque d'Airain", sc:1.5}, {k:0, name:"Le Chevalier Noir", sc:2.3}, {k:2, name:"Le Grand Cuirassier", sc:1.9},
+       {k:2, name:"Le Maréchal de Fer", sc:1.9}, {k:3, name:"Le Béhémoth des Tranchées", sc:1.55}, {k:3, name:"Le Char Spectral", sc:1.5}, {k:3, name:"Le Titan d'Acier", sc:1.55} ],
+  c: [ {k:3, name:"La Mère Larve", sc:1.22}, {k:3, name:"Le Kraken des Marais", sc:1.22}, {k:2, name:"La Bête des Cryptes", sc:1.9}, {k:3, name:"Le Colosse Abyssal", sc:1.2},
+       {k:0, name:"Le Prince des Profonds", sc:2.4}, {k:1, name:"L'Œil du Gouffre", sc:2.4}, {k:2, name:"Le Shoggoth Primordial", sc:1.6}, {k:3, name:"Le Grand Ancien", sc:1.15} ],
+};
+function bossDef(era, fac){
+  const key = "B"+fac+era; if(CACHE[key]) return CACHE[key];
+  const B = BOSS[fac][era], u = UD(era, B.k, fac), d = Object.assign({}, u);
+  d.boss = true; d.bossScale = B.sc; d.name = B.name;
+  d.hp = Math.round(UD(era,3,fac).hp*9); d.dmg = Math.round(UD(era,3,fac).dmg*2.2); d.cost = UD(era,3,fac).cost*5;
+  d.splash = 55; d.cd = 2.0; d.speed = 15; d.range = u.proj ? Math.max(u.range, 240) : 14;
+  d.w = u.w*B.sc; d.h = u.h*B.sc;
+  return CACHE[key] = d;
+}
+// ---------- défis du jour ----------
+const DAILY = [
+  {id:"noturret", name:"Sans tourelles", desc:"Personne ne peut construire de tourelle : tout se joue avec les unités."},
+  {id:"night", name:"Nuit éternelle", desc:"Il fait nuit en permanence et les créatures sont 25 % plus fortes."},
+  {id:"frozen", name:"Âge figé", desc:"Impossible d'évoluer : on reste à la Préhistoire jusqu'au bout."},
+  {id:"champions", name:"Champions", desc:"Chaque victime compte double : les unités montent de niveau deux fois plus vite."},
+  {id:"poor", name:"Disette", desc:"L'or est rare : revenus et butin divisés par deux."},
+  {id:"fury", name:"Furie", desc:"Tous les dégâts +50 % et l'attaque spéciale se recharge deux fois plus vite."},
+];
+const dailyToday = () => DAILY[Math.floor(Date.now()/86400000) % DAILY.length];
+// ---------- campagne ----------
+const MISSIONS = [
+  {t:"L'Aube des Clans", d:"Deux clans se disputent la vallée. Écrase le camp adverse."},
+  {t:"Le Serment d'Airain", d:"Les phalanges marchent sous un ciel sans étoiles. Prends leur temple."},
+  {t:"La Nuit des Bannières", d:"Le château ennemi brûle déjà. Termine le travail."},
+  {t:"Fer et Poudre", d:"Les premières bouches à feu tonnent. Brise la forteresse."},
+  {t:"La Grande Armée", d:"Colonnes, sabres et mitraille : perce leurs lignes."},
+  {t:"Les Tranchées Rouges", d:"La boue, le gaz, la peur. Avance mètre par mètre."},
+  {t:"Le Ciel en Feu", d:"Les bombardiers obscurcissent la lune. Rase leur bunker."},
+  {t:"Le Dernier Front", d:"Ce qui dort entre les étoiles s'éveille. Tiens bon et frappe."},
+];
+// ---------- survie : sanctuaire de reliques (progression permanente, uniquement en Survie) ----------
+const UPG = [
+  {id:"gold", name:"Trésor", desc:"+10 % d'or par niveau", max:5, cost:l=>3+l*3},
+  {id:"start", name:"Héritage", desc:"+150 or de départ par niveau", max:5, cost:l=>2+l*2},
+  {id:"hp", name:"Bastion", desc:"+10 % de PV de base par niveau", max:5, cost:l=>3+l*3},
+  {id:"xp", name:"Savoir", desc:"+8 % d'XP par niveau", max:5, cost:l=>3+l*3},
+  {id:"spec", name:"Rituel", desc:"Attaque spéciale −8 % de recharge par niveau", max:5, cost:l=>4+l*3},
+  {id:"tower", name:"Avant-poste", desc:"Commence avec une tourelle", max:1, cost:l=>10},
+];
+function loadJSON(k, def){ try{ return JSON.parse(localStorage.getItem(k)||"null") ?? def; }catch(e){ return def; } }
+function saveJSON(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+const relics = () => loadJSON("fdt_relics", 0), upg = () => loadJSON("fdt_upg", {});
 const DIFF = {facile:{mul:0.75,think:1.4,label:"Facile"}, normal:{mul:1,think:1,label:"Normal"}, difficile:{mul:1.35,think:0.7,label:"Difficile"}};
 function newSide(id, fac){
   return {id, dir:id===0?1:-1, front:id===0?PB:EB, gold:175, xp:0, era:0, hp:baseMaxHp(0), maxHp:baseMaxHp(0),
     queue:[], prodT:0, units:[], turrets:[null,null,null,null], slots:1, specialCd:12, auto:false, think:0,
     fac, team:fac==="h"?"#3b82f6":"#a855f7", teamLight:fac==="h"?"#93c5fd":"#d8b4fe"};
 }
-function newGame(diff, demo=false, fac="h"){
+function newGame(diff, demo=false, fac="h", opts={}){
   G = {p:newSide(0, fac), e:newSide(1, fac==="h"?"c":"h"), proj:[], parts:[], texts:[], corpses:[], planes:[], cam:0, speed:1, paused:false, over:false, t:0,
-       diff:DIFF[diff], diffKey:diff, sellMode:false, uid:0, shake:0, demo};
+       diff:DIFF[diff], diffKey:diff, sellMode:false, uid:0, shake:0, demo, mode: opts.mode || "conquest", mod: null, mission: opts.mission ?? -1,
+       noEvolve:false, noTurrets:false, rewardMul:1, dmgMul:1, specMul:1, bossKills:0, wave:0, waveT:15, siegeDur:900, guardian:false};
   G.e.auto = true;
+  const M = G.mode;
+  if(M==="daily"){ G.mod = dailyToday().id;
+    if(G.mod==="noturret") G.noTurrets = true; if(G.mod==="frozen") G.noEvolve = true; if(G.mod==="poor") G.rewardMul = 0.5; if(G.mod==="fury"){ G.dmgMul = 1.5; G.specMul = 0.5; } }
+  if(M==="survival"){ G.e.auto = false; const U = upg();
+    G.p.goldMul = 1 + 0.1*(U.gold||0); G.p.xpMul = 1 + 0.08*(U.xp||0); G.p.specMul = 1 - 0.08*(U.spec||0);
+    G.p.gold += 150*(U.start||0); G.p.maxHp = Math.round(G.p.maxHp*(1+0.1*(U.hp||0))); G.p.hp = G.p.maxHp; G.p.hpMul = 1+0.1*(U.hp||0);
+    if(U.tower) G.p.turrets[0] = {def:TD(0,1,G.p.fac), cdT:0, ang:0, recoil:0};
+    G.e.slots = 0; }
+  if(M==="siege"){ G.p.slots = 4; G.p.maxHp = Math.round(G.p.maxHp*1.6); G.p.hp = G.p.maxHp; G.p.hpMul = 1.6; G.p.gold = 400; }
+  if(M==="campaign"){ const i = G.mission; G.noEvolve = true;
+    for(const sd of [G.p, G.e]){ sd.era = i; sd.maxHp = baseMaxHp(i); sd.hp = sd.maxHp; sd.gold = Math.round(260*costMul(i)); sd.xp = i ? XP_REQ[i-1] : 0; }
+    G.e.turrets[0] = {def:TD(i,0,G.e.fac), cdT:0, ang:0, recoil:0}; }
   if(demo || location.hash.includes("auto")) G.p.auto = true;
   G.motes = Array.from({length:46}, (_,i)=>({x:hash(i*2.7)*W, y:GY-20-hash(i*5.3)*230, ph:hash(i*1.9)*6.28, sp:6+hash(i*3.3)*14}));
   G.tentacles = []; G.rituals = []; G.decals = []; G.bolt = null; G.nextBolt = 8 + Math.random()*10;
@@ -305,16 +386,30 @@ const onScreen = x => x > G.cam-60 && x < G.cam+viewW+60;
 // =====================================================================
 //  ACTIONS
 // =====================================================================
+// événements planifiés en temps de jeu (respectent la pause et la vitesse)
+function keep(arr, pred){ let j = 0; for(let i=0;i<arr.length;i++){ const v = arr[i]; if(pred(v)) arr[j++] = v; } arr.length = j; return arr; }
+function later(dt, fn){ (G.events = G.events||[]).push({t: G.t + dt, fn}); }
+function makeUnit(d, x, extra){
+  const hp = d.hp * (G.mod==="night" && d.fac==="c" ? 1.25 : 1);
+  return Object.assign({id:++G.uid, def:d, x, hp, maxHp:hp, dm:1, lvl:0, kills:0, cdT:0.3, walk:Math.random()*5, atk:0, hit:0, dead:false, moving:false}, extra||{});
+}
+function spawnBoss(s){
+  const d = bossDef(s.era, s.fac);
+  const u = makeUnit(d, s.front + s.dir*(d.w/2+6), {lvl:4, boss:true, slamT:5, sumT:9});
+  s.units.push(u); (G.bosses = G.bosses||[]).push(u);
+  sprite(d, 4);
+  if(!G.demo){ flash((s===G.p ? "⚔ Ton boss entre en jeu : " : "☠ Boss ennemi : ")+d.name); sfx("special"); G.shake = 8; }
+}
 function canQueue(s,k){ return s.queue.length<5 && s.gold>=UD(s.era,k,s.fac).cost; }
 function queueUnit(s,k){
   if(!canQueue(s,k)) return false;
   const d = UD(s.era,k,s.fac); s.gold -= d.cost; s.queue.push(d);
   if(s===G.p) sfx("click"); return true;
 }
-function canEvolve(s){ return s.era<7 && s.xp>=XP_REQ[s.era]; }
+function canEvolve(s){ return !G.noEvolve && !(G.mode==="survival" && s===G.e) && s.era<7 && s.xp>=XP_REQ[s.era]; }
 function evolve(s){
   if(!canEvolve(s)) return;
-  const r = s.hp/s.maxHp; s.era++; s.maxHp = baseMaxHp(s.era);
+  const r = s.hp/s.maxHp; s.era++; s.maxHp = Math.round(baseMaxHp(s.era)*(s.hpMul||1));
   const before = Math.round(s.maxHp*r), gain = Math.round(s.maxHp*0.3);
   s.hp = Math.min(s.maxHp, before + gain);
   const bxp = s.id===0 ? 110 : W-110;
@@ -322,11 +417,12 @@ function evolve(s){
   for(let i=0;i<14;i++) addPart({type:"spark", x:bxp+(Math.random()-0.5)*120, y:GY-Math.random()*160, vx:0, vy:-30-Math.random()*40, life:1, max:1, r:2.5, c:"#86efac", g:-20});
   prebake(s);
   if(s===G.p){ flash("✦ Nouvelle époque : "+ERAS[s.era].name+" · base +"+fmtN(s.hp-before)+" PV"); buildButtons(); sfx("evolve"); G.evolveFx = 1.2; }
+  if(G.mode==="conquest" || G.mode==="daily" || G.mode==="siege") later(1.5, ()=>spawnBoss(s));
   else if(!G.demo){ flash("⚠ L'ennemi passe à l'époque : "+ERAS[s.era].name); sfx("lose"); }
 }
 function useSpecial(s){
   if(s.specialCd>0) return;
-  s.specialCd = SPECIAL_CD;
+  s.specialCd = SPECIAL_CD * G.specMul * (s.specMul||1);
   const o = opp(s), e = s.era, rain = e===1 && s.fac==="h", n = rain ? 26 : 16, dmg = Math.round(70*statMul(e)*(rain?0.65:1));
   for(let i=0;i<n;i++){
     let x;
@@ -344,6 +440,7 @@ function useSpecial(s){
   if(s===G.p){ flash(specialName(s)+" !"); sfx("special"); }
 }
 function buyTurret(s,k){
+  if(G.noTurrets){ if(s===G.p) flash("Défi « Sans tourelles » : construction interdite"); return false; }
   const d = TD(s.era,k,s.fac); const i = s.turrets.findIndex((t,j)=>j<s.slots && !t);
   if(i<0){ if(s===G.p) flash("Aucun emplacement libre : vends une tourelle ou ajoute un emplacement"); return false; }
   if(s.gold<d.cost) return false;
@@ -402,14 +499,16 @@ function gainKill(src){
 }
 function damageUnit(u, dmg, by, src){
   if(u.dead) return;
+  dmg *= G.dmgMul; if(G.mod==="night" && by.fac==="c") dmg *= 1.25;
   u.hp -= dmg; u.hit = 0.1;
   if(ORG.has(u.def.visual) && Math.random()<0.5 && onScreen(u.x)) sparks(u.x, GY-u.def.h*0.55, 2, u.def.fac==="c" ? CRE.glow[u.def.era] : "#6b0f0f");
   if(u.hp<=0){
     u.dead = true;
-    gainKill(src);
-    const mul = (by===G.e ? G.diff.mul : 1) * (1 + (u.lvl||0)*0.25);
+    gainKill(src); if(G.mod==="champions") gainKill(src);
+    if(u.def.boss){ G.bosses = (G.bosses||[]).filter(b=>b!==u); if(by===G.p) G.bossKills++; flash("☠ "+u.def.name+" est tombé !"); explosionFx(u.x, GY-u.def.h*0.4, 70, true); }
+    const mul = (by===G.e ? G.diff.mul * (G.mode==="siege" ? 1.5+G.t/250 : 1) : (by.goldMul||1)) * (1 + (u.lvl||0)*0.25) * G.rewardMul;
     const gold = Math.round(u.def.cost*1.2*mul), xp = Math.round(u.def.cost*mul);
-    by.gold += gold; by.xp += xp;
+    by.gold += gold; by.xp += xp*(by.xpMul||1);
     opp(by).xp += Math.round(u.def.cost*0.25);
     if(by===G.p){ addText(u.x, GY-u.def.h-16, "+"+gold, "#fcd34d"); if(onScreen(u.x)) sfx("coin"); }
     G.corpses.push({u, side:opp(by), t:0});
@@ -421,6 +520,8 @@ function damageUnit(u, dmg, by, src){
 }
 function damageBase(s, dmg){
   if(G.over) return;
+  if(s===G.e && (G.mode==="survival" || G.mode==="siege")) return;      // faille / forteresse ennemie invulnérable
+  dmg *= G.dmgMul;
   s.hp -= dmg;
   if(s.hp<=0){ s.hp=0; endGame(s!==G.p); }
 }
@@ -447,7 +548,7 @@ function fire(target, def, side, x, y, src){
 function step(dt){
   G.t += dt;
   for(const s of [G.p, G.e]){
-    s.gold += income(s.era)*dt*(s===G.e?G.diff.mul:1);
+    s.gold += income(s.era)*dt*(s===G.e ? G.diff.mul*(G.mode==="siege" ? 2.2+G.t/110 : 1) : (s.goldMul||1))*G.rewardMul;
     s.specialCd = Math.max(0, s.specialCd-dt);
     if(s.queue.length){
       const d = s.queue[0];
@@ -455,7 +556,10 @@ function step(dt){
       const blocked = s.units.some(u => Math.abs(u.x - spawnX) < (u.def.w+d.w)/2 + 2);
       if(s.prodT < d.time) s.prodT += dt;
       if(s.prodT >= d.time && !blocked){
-        s.units.push({id:++G.uid, def:d, x:spawnX, hp:d.hp, maxHp:d.hp, dm:1, lvl:0, kills:0, cdT:0.3, walk:Math.random()*5, atk:0, hit:0, dead:false, moving:false});
+        const nu = makeUnit(d, spawnX);
+        const vetL = G.mode==="survival" && s===G.e ? G.waveLvl : G.mode==="siege" && s===G.e ? Math.min(4, Math.floor(G.t/170)) : 0;
+        if(vetL){ const L = vetL; nu.lvl = L; nu.maxHp = Math.round(nu.maxHp*Math.pow(1.22,L)); nu.hp = nu.maxHp; nu.dm = Math.pow(1.18,L); sprite(d, L); }
+        s.units.push(nu);
         s.queue.shift(); s.prodT = 0;
       }
     }
@@ -486,6 +590,18 @@ function step(dt){
         if((d.visual==="tank"||d.visual==="jeep") && Math.random()<dt*4) puff(u.x - dir*d.w*0.5, GY-14, 1, "#6b7280", 5);
       }
       u.cdT -= dt; u.atk = Math.max(0,u.atk-dt); u.hit = Math.max(0,u.hit-dt);
+      if(u.boss){
+        u.slamT -= dt; u.sumT -= dt;
+        if(u.slamT <= 0 && (gapE < 140 || gapB < 140)){ u.slamT = 6.5;          // onde de choc
+          for(const v of o.units) if(!v.dead && (v.x-u.x)*dir > -20 && (v.x-u.x)*dir < 170){ damageUnit(v, d.dmg*0.9*u.dm, s, u); v.x += dir*26; }
+          if(gapB < 170) damageBase(o, d.dmg*0.6);
+          addPart({type:"ring", x:u.x+dir*40, y:GY-4, vx:0, vy:0, life:0.6, max:0.6, r:120, c:s.fac==="c" ? CRE.glow[d.era] : "#fde68a"});
+          for(let k2=0;k2<14;k2++) addPart({type:"debris", x:u.x+dir*(20+Math.random()*120), y:GY-2, vx:(Math.random()-0.5)*120, vy:-80-Math.random()*160, life:0.9, max:0.9, r:3, c:"#3f2a14", g:600, rot:0});
+          if(onScreen(u.x)){ G.shake = Math.min(12, G.shake+8); sfx("boom"); } }
+        if(u.sumT <= 0){ u.sumT = 12;                                          // invocation de sbires
+          for(let k2=0;k2<2;k2++) s.units.push(makeUnit(UD(s.era,0,s.fac), u.x - dir*(30+k2*18)));
+          if(onScreen(u.x)) puff(u.x - dir*30, GY-10, 6, s.fac==="c" ? "#4a2a55" : "#57534e", 10); }
+      }
       if(target && u.cdT<=0){
         u.cdT = d.cd; u.atk = 0.25;
         if(d.proj){ fire(target, d, s, u.x + dir*d.w*0.55, GY - d.h*0.72, u); }
@@ -525,31 +641,44 @@ function step(dt){
       else if(pr.target && !pr.target.dead){ damageUnit(pr.target, pr.dmg, pr.side, pr.src); if(pr.kind!=="laser") sparks(pr.x,pr.y,2,"#7f1d1d"); }
     }
   }
-  G.proj = G.proj.filter(p=>!p.done);
-  for(const s of [G.p,G.e]) s.units = s.units.filter(u=>!u.dead);
+  keep(G.proj, p=>!p.done);
+  keep(G.p.units, u=>!u.dead); keep(G.e.units, u=>!u.dead);
   for(const p of G.parts){
     p.life -= dt; p.x += p.vx*dt; p.y += p.vy*dt;
     if(p.g){ p.vy += p.g*dt; if(p.y>GY+2 && p.g>0){ p.y=GY+2; p.vy*=-0.3; p.vx*=0.5; } }
     if(p.rot!==undefined) p.rot += dt*8;
   }
-  G.parts = G.parts.filter(p=>p.life>0);
+  keep(G.parts, p=>p.life>0);
   for(const t of G.texts){ t.life-=dt; t.y-=34*dt; }
-  G.texts = G.texts.filter(t=>t.life>0);
+  keep(G.texts, t=>t.life>0);
   for(const c of G.corpses) c.t += dt;
-  G.corpses = G.corpses.filter(c=>c.t<1.4);
+  keep(G.corpses, c=>c.t<1.4);
   for(const pl of G.planes) pl.x += pl.vx*dt;
-  G.planes = G.planes.filter(pl=>pl.x>-500 && pl.x<W+500);
+  keep(G.planes, pl=>pl.x>-500 && pl.x<W+500);
   for(const c of G.clouds) c.x += 5*dt*c.s;
   for(const m of G.motes){ m.x += Math.sin(G.t*0.7+m.ph)*m.sp*dt*0.8 + 4*dt; m.y -= m.sp*0.35*dt; if(m.y < GY-260){ m.y = GY-6; m.x = Math.random()*W; } if(m.x>W) m.x=0; }
-  for(const t of G.tentacles) t.t += dt; G.tentacles = G.tentacles.filter(t=>t.t<t.life);
-  for(const dc of G.decals) dc.t += dt; G.decals = G.decals.filter(dc=>dc.t<12);
+  for(const t of G.tentacles) t.t += dt; keep(G.tentacles, t=>t.t<t.life);
+  for(const dc of G.decals) dc.t += dt; keep(G.decals, dc=>dc.t<12);
   for(const a of G.ash){ if(a.ember){ a.y -= dt*0.05*a.s; a.x += Math.sin(G.t+a.ph)*dt*0.01; if(a.y<0){ a.y = 1; a.x = Math.random(); } } else { a.y += dt*0.025*a.s; a.x += (Math.sin(G.t*0.6+a.ph)*0.6+0.3)*dt*0.012; if(a.y>1){ a.y = 0; a.x = Math.random(); } if(a.x>1) a.x = 0; } }
   if(G.bolt) G.bolt.t -= dt;
   if(G.t > G.nextBolt){ G.nextBolt = G.t + 12 + Math.random()*20;
     const x0 = 80 + Math.random()*(viewW-160), pts = [[x0, VY0]]; let x = x0, y = VY0;
     while(y < GY-140){ x += (Math.random()-0.5)*40; y += 14 + Math.random()*22; pts.push([x,y]); }
     G.bolt = {pts, t:0.3}; G.flashFx = 0.55; if(!G.demo) setTimeout(()=>sfx("thunder"), 250+Math.random()*700); }
-  for(const r of G.rituals) r.t += dt; G.rituals = G.rituals.filter(r=>r.t<2.2);
+  for(const r of G.rituals) r.t += dt; keep(G.rituals, r=>r.t<2.2);
+  if(G.events && G.events.length){ const due = G.events.filter(ev=>ev.t<=G.t); G.events = G.events.filter(ev=>ev.t>G.t); for(const ev of due) if(!G.over) ev.fn(); }
+  if(G.mode==="survival" && !G.demo){
+    G.waveT -= dt;
+    if(G.waveT <= 0){ G.wave++; G.waveT = 40;
+      const e = G.e, era = Math.min(7, Math.floor((G.wave-1)/2.4)); if(era > e.era){ e.era = era; prebake(e); }
+      const n = 4 + Math.floor(G.wave*1.8), w3 = Math.min(0.3, 0.05 + G.wave*0.015);
+      G.waveLvl = Math.min(4, Math.floor(G.wave/5));
+      for(let i=0;i<n;i++){ const r = Math.random(), k = r < w3 ? 3 : r < w3+0.2 ? 2 : r < w3+0.52 ? 1 : 0; e.queue.push(Object.assign({}, UD(e.era,k,e.fac), {time:0.45})); }
+      if(G.wave % 5 === 0) later(2.5, ()=>spawnBoss(G.e));
+      flash("Vague "+G.wave+(G.wave%5===0 ? " · un boss approche !" : "")); sfx("special"); }
+  }
+  if(G.mode==="siege" && !G.over && G.t >= G.siegeDur) endGame(true);
+  if(G.mode==="campaign" && !G.guardian && G.e.hp < G.e.maxHp*0.6){ G.guardian = true; spawnBoss(G.e); }
   for(const s of [G.p,G.e]) if(s.auto){ s.think-=dt; if(s.think<=0){ s.think=0.8*(s===G.e?G.diff.think:1); ai(s); } }
 }
 function ai(s){
@@ -578,7 +707,7 @@ function ai(s){
   if(s.aiPlan===undefined || s.aiPlanEra!==s.era) { s.aiPlan = pick(); s.aiPlanEra = s.era; }
   const planCost = UD(s.era, s.aiPlan, s.fac).cost;
   // combien produire : rien n'est fixé, cela dépend du rapport de force et de l'or
-  const want = danger || ratio > 1.6 ? 5 : ratio > 1.1 ? 3 : ratio > 0.7 ? 2 : 1;
+  const want = G.mode==="siege" && s===G.e ? 5 : danger || ratio > 1.6 ? 5 : ratio > 1.1 ? 3 : ratio > 0.7 ? 2 : 1;
   // ---- DÉFENSE PRIORITAIRE : tourelles et emplacements avant les unités ----
   const turrets = s.turrets.slice(0, s.slots);
   const nTur = turrets.filter(Boolean).length;
@@ -589,7 +718,8 @@ function ai(s){
   const defGoal = Math.min(4, 1 + Math.floor(G.t/75) + (underAttack ? 1 : 0) + (skill>=1 ? 1 : 0));
   const bestTurret = budget => { for(let k=3;k>=0;k--){ if(TD(s.era,k,s.fac).cost <= budget) return k; } return -1; };
   let defBusy = false;
-  if(freeSlot >= 0 && nTur < defGoal){
+  if(G.mode==="siege" && s===G.e){ /* base imprenable : tout pour l'attaque */ }
+  else if(freeSlot >= 0 && nTur < defGoal){
     // en danger : la meilleure tourelle payable tout de suite ; sinon on garde un peu d'or pour les unités
     const budget = underAttack ? s.gold : s.gold - (s.units.length < 2 ? UD(s.era,0,s.fac).cost*2 : 0);
     const k = bestTurret(budget);
@@ -623,6 +753,23 @@ function endGame(won){
   G.over = true;
   if(G.demo){ setTimeout(()=>{ if(G.demo) newGame("normal", true); }, 1500); return; }
   sfx(won?"evolve":"lose");
+  const again = `go('${G.diffKey}', ${JSON.stringify({mode:G.mode, mission:G.mission}).replace(/"/g,"&quot;")})`;
+  if(G.mode==="survival"){
+    const gain = Math.max(0, G.wave-1) + G.bossKills*2, best = loadJSON("fdt_surv", 0);
+    saveJSON("fdt_relics", relics() + gain); if(G.wave > best) saveJSON("fdt_surv", G.wave);
+    showOverlay(`<h1 class="title">LA FAILLE T'A ENGLOUTI</h1><p class="sub">Vague atteinte : <b>${G.wave}</b> ${G.wave>best?"· nouveau record !":"· record "+best} · boss vaincus : ${G.bossKills}<br>Reliques gagnées : <b style="color:var(--gold)">+${gain}</b> (total ${relics()})</p>
+      <div class="row"><button class="big g" onclick="${again}">Rejouer</button><button class="big o" onclick="menuSurvival()">Sanctuaire</button><button class="big" onclick="startMenu()">Menu</button></div>`); return; }
+  if(G.mode==="siege"){
+    showOverlay(`<h1 class="title">${won?"LA FORTERESSE TIENT !":"LA FORTERESSE EST TOMBÉE"}</h1><p class="sub">${won?"Tu as tenu 15 minutes face à l'assaut.":"Tenue : "+fmtTime(G.t)+" sur 15:00"} · ${G.diff.label}</p>
+      <div class="row"><button class="big g" onclick="${again}">Rejouer</button><button class="big" onclick="startMenu()">Menu</button></div>`); return; }
+  if(G.mode==="campaign"){
+    const key = "fdt_camp_"+G.p.fac, st = loadJSON(key, []);
+    const stars = won ? 1 + (G.p.hp/G.p.maxHp >= 0.5 ? 1 : 0) + (G.t <= 420 ? 1 : 0) : 0;
+    if(stars > (st[G.mission]||0)){ st[G.mission] = stars; saveJSON(key, st); }
+    const next = won && G.mission < 7 ? `<button class="big o" onclick="go('normal', {mode:'campaign', mission:${G.mission+1}})">Mission suivante</button>` : "";
+    showOverlay(`<h1 class="title">${won?"MISSION ACCOMPLIE":"MISSION ÉCHOUÉE"}</h1><p class="sub">${MISSIONS[G.mission].t} · ${won ? "★".repeat(stars)+"☆".repeat(3-stars) : "réessaie !"}<br><small>★ victoire · ★ base à 50 % ou plus · ★ en moins de 7 min</small></p>
+      <div class="row">${next}<button class="big g" onclick="${again}">Rejouer</button><button class="big" onclick="menuCampaign()">Missions</button></div>`); return; }
+  if(G.mode==="daily" && won){ const k = "fdt_daily_"+Math.floor(Date.now()/86400000), b = loadJSON(k, 0); if(!b || G.t < b) saveJSON(k, G.t); }
   let best = null; try{ best = JSON.parse(localStorage.getItem("fdt_best")||"null"); }catch(e){}
   const rank = {facile:1,normal:2,difficile:3};
   if(won && (!best || rank[G.diffKey]>rank[best.d] || (rank[G.diffKey]===rank[best.d] && G.t<best.t))){
@@ -708,7 +855,7 @@ function hillY(wx, layer){
 }
 // 1 seconde de jeu = 1 minute ; la partie commence à 16h30
 function dayInfo(){
-  const m = (((G ? G.t : 0) + 990) % 1440 + 1440) % 1440;
+  const m = G && G.mod==="night" ? 60 : (((G ? G.t : 0) + 990) % 1440 + 1440) % 1440;
   const a = (m - 360)/1440*Math.PI*2;
   const elev = Math.sin(a);
   return {m, a, elev, L: Math.max(0, Math.min(1, elev*2.2+0.2)), dusk: Math.max(0, 1-Math.abs(elev)*3.2)};
@@ -771,6 +918,12 @@ function drawSkyEye(E){
   ctx.strokeStyle = "#1a0f1a"; ctx.lineWidth = 3; ctx.stroke();
   ctx.restore();
 }
+const GCACHE = new Map();
+function cachedLinear(key, x0, y0, x1, y1, stops){
+  let g = GCACHE.get(key); if(g) return g;
+  if(GCACHE.size > 120) GCACHE.clear();
+  g = ctx.createLinearGradient(x0, y0, x1, y1); for(const [o,c] of stops) g.addColorStop(o, c); GCACHE.set(key, g); return g;
+}
 function drawSky(E0){
   const D = G.day || dayInfo(), L = D.L, dk2 = D.dusk;
   const E = Object.assign({}, E0);
@@ -778,9 +931,7 @@ function drawSky(E0){
   E.sky = [ mix(mix(E0.sky[0], dayTop, L), "#40284a", dk2*0.5), mix(mix(E0.sky[1], dayBot, L), "#d0683c", dk2*0.65) ];
   E.far = mix(E0.far, "#8a8f94", L*0.45); E.mid = mix(E0.mid, light2(E0.mid,0.3), L*0.6); E.near = mix(E0.near, light2(E0.near,0.25), L*0.6);
   E.fog = mix(E0.fog, "#c8c0b0", L*0.5); E.moon = E0.moon;
-  const sky = ctx.createLinearGradient(0,VY0,0,GY);
-  sky.addColorStop(0,E.sky[0]); sky.addColorStop(1,E.sky[1]);
-  ctx.fillStyle = sky; ctx.fillRect(-5,-5,viewW+10,GY+10);
+  ctx.fillStyle = cachedLinear("sky"+E.sky[0]+E.sky[1], 0, VY0, 0, GY, [[0,E.sky[0]],[1,E.sky[1]]]); ctx.fillRect(-5,-5,viewW+10,GY+10);
   // soleil (de jour)
   if(D.elev > -0.2){ const fa = D.a < 0 ? D.a + Math.PI*2 : D.a, t = Math.max(0, Math.min(1, fa/Math.PI));
     const sx2 = viewW*(0.06+0.88*t), sy2 = VY0 + 250 - Math.sin(t*Math.PI)*200, sa = Math.max(0, Math.min(1, (D.elev+0.2)*3));
@@ -788,7 +939,7 @@ function drawSky(E0){
     ctx.globalAlpha = sa; ctx.fillStyle = dk2>0.4 ? "#ffb070" : "#fff6dc"; circ(sx2, sy2, 22); ctx.fill(); ctx.globalAlpha = 1; }
   // étoiles (la nuit)
   ctx.fillStyle = "#eafff2";
-  if(L < 0.9) for(const st of STARS){
+  if(L < 0.85) for(const st of STARS){
     const span = viewW+20, x = (((st.x*span*1.3 - G.cam*0.02) % span) + span) % span - 10, y = VY0 + st.y*240;
     ctx.globalAlpha = st.b*(0.45+0.55*Math.sin(G.t*st.f + st.p))*(1-L); ctx.fillRect(x,y,st.r,st.r);
   }
@@ -823,9 +974,7 @@ function drawSky(E0){
   const pars = [0.15, 0.35, 0.6];
   for(let l=0;l<3;l++){
     const off = G.cam*pars[l];
-    const grad = ctx.createLinearGradient(0,GY-200,0,GY);
-    grad.addColorStop(0, light2(cols[l],0.06)); grad.addColorStop(1, dark(cols[l],0.15));
-    ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(-10, GY+2);
+    ctx.fillStyle = cachedLinear("hill"+cols[l], 0, GY-200, 0, GY, [[0, light2(cols[l],0.06)], [1, dark(cols[l],0.15)]]); ctx.beginPath(); ctx.moveTo(-10, GY+2);
     for(let x=-10; x<=viewW+20; x+=14) ctx.lineTo(x, GY - hillY(x+off, l) - (2-l)*18);
     ctx.lineTo(viewW+20, GY+2); ctx.closePath(); ctx.fill();
     if(l===0){
@@ -851,9 +1000,7 @@ function drawSky(E0){
     }
   }
   // brume
-  const fog = ctx.createLinearGradient(0,GY-80,0,GY);
-  fog.addColorStop(0, E.fog+"00"); fog.addColorStop(1, E.fog+"77");
-  ctx.fillStyle = fog; ctx.fillRect(-5,GY-80,viewW+10,82);
+  ctx.fillStyle = cachedLinear("fog"+E.fog, 0, GY-80, 0, GY, [[0, E.fog+"00"], [1, E.fog+"77"]]); ctx.fillRect(-5,GY-80,viewW+10,82);
 }
 // sol pré-rendu (dégradé, chemin, herbe, cailloux, hachures) par époque ; le jour/la nuit sont appliqués par un voile
 const GROUND = {};
@@ -1134,8 +1281,8 @@ function postFx(src, t){
 function sprite(d, lvl=0){
   const Rr = Math.min(5, Math.max(2, scale*1.6));
   if(Math.abs(Rr-SPR_R) > 0.08){ SPR = {}; SPR_R = Rr; }
-  const key = d.fac+d.era+"_"+d.k+"_L"+lvl; if(SPR[key]) return SPR[key];
-  const zs = (d.fac==="c" ? crSize(d.era) : 1) * (lvl>=4 ? 1.16 : lvl>=2 ? 1.06 : 1) * (lvl>0 ? 1.1 : 1), b = BOUNDS[d.visual].map(v=>v*zs), k = US*Rr, pad = 4;
+  const key = (d.boss?"B":"")+d.fac+d.era+"_"+d.k+"_L"+lvl; if(SPR[key]) return SPR[key];
+  const zs = (d.bossScale||1) * (d.fac==="c" ? crSize(d.era) : 1) * (lvl>=4 ? 1.16 : lvl>=2 ? 1.06 : 1) * (lvl>0 ? 1.1 : 1), b = BOUNDS[d.visual].map(v=>v*zs), k = US*Rr, pad = 4;
   const w = Math.ceil((b[0]+b[1])*k)+pad*2, h = Math.ceil((b[2]+6)*k)+pad*2, ox = b[0]*k+pad, oy = b[2]*k+pad;
   const team = d.fac==="c" ? "#a855f7" : "#3b82f6", th = Math.max(1.5, Rr*1.1);
   const mk = (walk, atk, moving) => {
@@ -1178,9 +1325,8 @@ function drawUnit(u, s){
   if(s.dir<0) ctx.scale(-1,1);
   if(u.hit>0) ctx.translate(-1.8*u.hit/0.1, 0);
   const [S, f] = unitFrame(u);
-  if(u.hit>0) ctx.filter = "brightness(2.1) sepia(.4)";
   ctx.drawImage(f, -S.ox/S.R, -S.oy/S.R, S.w/S.R, S.h/S.R);
-  ctx.filter = "none";
+  if(u.hit>0){ ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.55; ctx.drawImage(f, -S.ox/S.R, -S.oy/S.R, S.w/S.R, S.h/S.R); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
   if(u.atk>0 && !d.proj && (d.visual==="foot" || d.visual==="mount")){
     const p = 1 - u.atk/0.25, wpn = weaponOf(d);
     if(p>0.33 && p<0.62){ const q = (p-0.33)/0.29, sy = (d.visual==="mount" ? -51 : -35)*US, sx = 1.5*US;
@@ -1192,7 +1338,7 @@ function drawUnit(u, s){
   }
   ctx.restore();
   const w = Math.max(22, d.w*0.8), r = Math.max(0,u.hp/(u.maxHp||d.hp));
-  const lvH = (u.lvl>=4 ? 1.16 : u.lvl>=2 ? 1.06 : 1);
+  const lvH = (u.lvl>=4 ? 1.16 : u.lvl>=2 ? 1.06 : 1) * (d.boss ? 1.05 : 1);
   if(u.lvl>0){ // chevrons de grade
     const y = GY-d.h*lvH-(r<1?20:13);
     for(let i=0;i<u.lvl;i++){ const cx = u.x + (i-(u.lvl-1)/2)*6; ctx.fillStyle = u.lvl>=4 ? "#fbbf24" : "#e5c07b"; ctx.strokeStyle = "#1a0f08"; ctx.lineWidth = 1;
@@ -1210,6 +1356,7 @@ function drawUnitBody(d, team, walk, atk01, hit, moving, lvl=0){
   const sw = moving===false ? 0 : Math.sin(walk*9), atk = atk01>0 ? Math.sin((atk01/0.25)*Math.PI) : 0;
   ATKP = atk01>0 ? 1 - atk01/0.25 : 0; MOVING = moving!==false;
   ctx.save(); ctx.scale(US,US);
+  if(d.bossScale) ctx.scale(d.bossScale, d.bossScale);
   if(lvl>=2){ const z = lvl>=4 ? 1.16 : 1.06; ctx.scale(z,z); }
   if(lvl>=4) drawLevelAura(d, team, walk);
   ctx.strokeStyle=OL; ctx.lineWidth=1.0; ctx.lineJoin="round"; ctx.lineCap="round";
@@ -2104,9 +2251,10 @@ function drawCorpse(c){
   ctx.translate(u.x, GY); if(c.side.dir<0) ctx.scale(-1,1);
   const veh = !ORG.has(d.visual) || d.visual==="shoggoth" || d.visual==="spawn";
   const S = sprite(d);
-  if(veh) ctx.filter = "brightness(0.35)";
+  let img = S.idle;
+  if(veh){ if(!S.dark){ const c2 = document.createElement("canvas"); c2.width = img.width; c2.height = img.height; const x2 = c2.getContext("2d"); x2.drawImage(img,0,0); x2.globalCompositeOperation = "source-atop"; x2.fillStyle = "rgba(12,8,6,.68)"; x2.fillRect(0,0,c2.width,c2.height); S.dark = c2; } img = S.dark; }
   else ctx.rotate(-Math.min(1, t*2.2)*Math.PI/2*0.92);
-  ctx.drawImage(S.idle, -S.ox/S.R, -S.oy/S.R, S.w/S.R, S.h/S.R);
+  ctx.drawImage(img, -S.ox/S.R, -S.oy/S.R, S.w/S.R, S.h/S.R);
   ctx.restore();
 }
 function drawProj(p){
@@ -2173,7 +2321,19 @@ function render(){
   const ox = (Math.random()-0.5)*sh, oy = (Math.random()-0.5)*sh;
   G.shake *= 0.88;
   ctx.setTransform(scale,0,0,scale,ox*scale,(oy-VY0)*scale);
-  drawSky(E);
+  // ciel mis en cache : redessiné au plus 15 fois/s, ou dès que la caméra bouge / qu'un éclair tombe
+  if(!SKYC) SKYC = document.createElement("canvas");
+  if(SKYC.width!==cv.width || SKYC.height!==cv.height){ SKYC.width = cv.width; SKYC.height = cv.height; SKYC.t = -9; }
+  if(Math.abs(G.cam - SKYC.cam) > 0.3 || (G.bolt && G.bolt.t > -0.05)){   // caméra en mouvement : dessin direct (le cache n'aiderait pas)
+    ctx.setTransform(scale,0,0,scale,ox*scale,(oy-VY0)*scale); drawSky(E); SKYC.cam = G.cam; SKYC.t = -9;
+  } else {
+    if(G.t - SKYC.t > 1/15 || G.t < SKYC.t || SKYC.era !== G.p.era){
+      const main = ctx; ctx = SKYC.getContext("2d"); ctx.setTransform(scale,0,0,scale,0,-VY0*scale);
+      try{ drawSky(E); } finally { ctx = main; }
+      SKYC.t = G.t; SKYC.era = G.p.era;
+    }
+    ctx.setTransform(1,0,0,1,ox*scale,oy*scale); ctx.drawImage(SKYC, 0, 0);
+  }
   ctx.setTransform(scale,0,0,scale,(-G.cam+ox)*scale,(oy-VY0)*scale);
   drawPlanes();
   drawGround(E);
@@ -2206,14 +2366,13 @@ function render(){
   // vignette + flash d'évolution
   ctx.setTransform(1,0,0,1,0,0);
   postGrade();
-  if(!vignette){ vignette = ctx.createRadialGradient(cv.width/2,cv.height*0.55,cv.height*0.35,cv.width/2,cv.height*0.55,cv.width*0.75); vignette.addColorStop(0,"rgba(0,0,0,0)"); vignette.addColorStop(1,"rgba(2,8,6,.6)"); }
-  ctx.fillStyle=vignette; ctx.fillRect(0,0,cv.width,cv.height);
+
   if(G.flashFx>0){ ctx.fillStyle = `rgba(220,225,255,${G.flashFx*0.45})`; ctx.fillRect(0,0,cv.width,cv.height); G.flashFx -= 0.05; }
   if(G.evolveFx>0){ ctx.fillStyle=`rgba(190,255,210,${Math.min(0.7,G.evolveFx*0.6)})`; ctx.fillRect(0,0,cv.width,cv.height); G.evolveFx -= 0.03; }
-  drawMini();
+  if(!G.miniT || G.t - G.miniT > 0.1 || G.t < G.miniT){ G.miniT = G.t; drawMini(); }
 }
 // halo lumineux + étalonnage + grain (espace écran)
-let BC1 = null, BC2 = null, GRAIN = null, GRAIN_P = null;
+let BC1 = null, BC2 = null, GRAIN = null, GRAIN_P = null, SKYC = null;
 const CAN_FILTER = (() => { try{ const c = document.createElement("canvas").getContext("2d"); return typeof c.filter === "string"; }catch(e){ return false; } })();
 // qualité adaptative : 2 = tout, 1 = sans halo lumineux, 0 = sans halo ni grain + résolution réduite
 const QMODES = {eco:{fps:30, dpr:1.25, q:0, label:"Économie"}, normal:{fps:30, dpr:1.75, q:1, label:"Normale"}, high:{fps:60, dpr:2, q:2, label:"Haute"}};
@@ -2239,12 +2398,22 @@ function postGrade(){
     c2.globalCompositeOperation = "copy"; c2.filter = "brightness(0.72) contrast(2.8) blur(3px)"; c2.drawImage(BC1, 0, 0); c2.filter = "none";
     ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.42 + 0.2*(1-L); ctx.drawImage(BC2, 0, 0, cv.width, cv.height);
   }
-  ctx.globalCompositeOperation = "multiply"; ctx.globalAlpha = 0.38;
-  if(!postGrade.g || postGrade.h!==cv.height || Math.abs(postGrade.L-L)>0.02){ const g = ctx.createLinearGradient(0,0,0,cv.height); g.addColorStop(0, mix("#8fb0b8","#e6e2da",L)); g.addColorStop(1, mix("#c9a27a","#efe0c8",L)); postGrade.g = g; postGrade.h = cv.height; postGrade.L = L; }
-  ctx.fillStyle = postGrade.g; ctx.fillRect(0,0,cv.width,cv.height);
+  // une seule passe « multiply » : teinte jour/nuit + vignette, pré-rendue à basse résolution
+  const Lq = Math.round(L*25)/25;
+  if(!postGrade.c || postGrade.w!==cv.width || postGrade.h!==cv.height || postGrade.L!==Lq){
+    const gw = Math.max(64, cv.width>>3), gh = Math.max(32, cv.height>>3), c3 = postGrade.c || document.createElement("canvas"); c3.width = gw; c3.height = gh;
+    const x3 = c3.getContext("2d"), g = x3.createLinearGradient(0,0,0,gh);
+    g.addColorStop(0, mix("#ffffff", mix("#8fb0b8","#e6e2da",Lq), 0.38)); g.addColorStop(1, mix("#ffffff", mix("#c9a27a","#efe0c8",Lq), 0.38));
+    x3.fillStyle = g; x3.fillRect(0,0,gw,gh);
+    const v = x3.createRadialGradient(gw/2, gh*0.55, gh*0.35, gw/2, gh*0.55, gw*0.75); v.addColorStop(0,"rgba(255,255,255,0)"); v.addColorStop(1,"rgba(40,46,44,.62)");
+    x3.globalCompositeOperation = "multiply"; x3.fillStyle = v; x3.fillRect(0,0,gw,gh);
+    Object.assign(postGrade, {c:c3, w:cv.width, h:cv.height, L:Lq});
+  }
+  ctx.globalCompositeOperation = "multiply"; ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true; ctx.drawImage(postGrade.c, 0, 0, cv.width, cv.height);
   if(!GRAIN){ GRAIN = document.createElement("canvas"); GRAIN.width = GRAIN.height = 128; const gx = GRAIN.getContext("2d"), im = gx.createImageData(128,128);
     for(let i=0;i<im.data.length;i+=4){ const v = Math.random()*255; im.data[i]=im.data[i+1]=im.data[i+2]=v; im.data[i+3]=255; } gx.putImageData(im,0,0); GRAIN_P = ctx.createPattern(GRAIN, "repeat"); }
-  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = QUALITY>=1 ? 0.035 : 0; ctx.save(); ctx.translate((Math.random()*128)|0, (Math.random()*128)|0); ctx.fillStyle = GRAIN_P; ctx.fillRect(-128,-128,cv.width+256,cv.height+256); ctx.restore();
+  ctx.globalCompositeOperation = "source-over";
+  if(QUALITY>=1){ ctx.globalAlpha = 0.035; ctx.save(); ctx.translate((Math.random()*128)|0, (Math.random()*128)|0); ctx.fillStyle = GRAIN_P; ctx.fillRect(-128,-128,cv.width+256,cv.height+256); ctx.restore(); }
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
 }
 // barre de production au-dessus de chaque base (la sienne et celle de l'adversaire)
@@ -2295,6 +2464,7 @@ function drawLights(E){
   // unités : yeux luisants des adversaires, phares
   for(const s of [G.e, G.p]) for(const u of s.units){
     if(!onScreen(u.x)) continue; const d = u.def, eye = EYE[d.visual];
+    if(d.boss) light(u.x, GY - d.h*0.5, d.h*1.3, s.fac==="c" ? CRE.glow[d.era] : "#dc2626", 0.35+0.1*Math.sin(G.t*3));
     if(u.lvl>=3) light(u.x, GY - d.h*0.55, d.h*(u.lvl>=4?1.1:0.8), s.fac==="c" ? CRE.glow[d.era] : "#f59e0b", u.lvl>=4 ? 0.4 : 0.25);
     if(eye && s.fac==="c"){ const z2 = crSize(d.era), gc = CRE.glow[d.era], ex = u.x + s.dir*eye[0]*US*z2, ey = GY + eye[1]*US*z2; light(ex, ey, 8+d.era*1.4, gc, 0.9); ctx.globalAlpha=1; ctx.fillStyle="#ffffff"; ctx.fillRect(ex-0.8,ey-0.8,1.6,1.6);
       if(d.era>=6){ const hy = {deep:-51,eye:-47,shoggoth:-58,spawn:-92,hound:-40}[d.visual]||-50; light(u.x + s.dir*(d.visual==="spawn"?12:3)*US*z2, GY + hy*US*z2, 30, gc, 0.35+0.15*Math.sin(G.t*3)); } }
@@ -2434,7 +2604,7 @@ function refreshHud(){
   for(let k=0;k<4;k++){
     const ub=$("u"+k), tb=$("t"+k); if(!ub) continue;
     ub.disabled = !canQueue(p,k);
-    tb.disabled = p.gold < TD(p.era,k,p.fac).cost || !p.turrets.slice(0,p.slots).some(t=>!t);
+    tb.disabled = G.noTurrets || p.gold < TD(p.era,k,p.fac).cost || !p.turrets.slice(0,p.slots).some(t=>!t);
   }
   $("slot").disabled = p.slots>=4 || p.gold<SLOT_COST[p.slots];
   $("slotCost").textContent = p.slots>=4 ? "max" : fmtN(SLOT_COST[p.slots]);
@@ -2446,6 +2616,17 @@ function refreshHud(){
     else h += `<div class="qi" title="${d.time}s">${d.k+1}</div>`; }
   if(p.queue.length>1) h += `<div class="qi tot">Σ ${tot.toFixed(0)}s</div>`;
   setHTML("queue", h);
+  // information de mode
+  let mi = "";
+  if(G.mode==="survival") mi = `Vague ${G.wave} · ${G.waveT>0 ? Math.ceil(G.waveT)+" s" : ""}`;
+  else if(G.mode==="siege") mi = `Tenir ${fmtTime(Math.max(0, G.siegeDur-G.t))}`;
+  else if(G.mode==="daily") mi = `Défi : ${dailyToday().name}`;
+  else if(G.mode==="campaign") mi = `Mission ${G.mission+1}`;
+  $("modeInfo").style.display = mi ? "" : "none"; setText("modeInfo", mi);
+  // barre de boss (priorité au boss ennemi)
+  const bs = (G.bosses||[]).filter(b=>!b.dead), bb = bs.find(b=>G.e.units.includes(b)) || bs[0];
+  $("bossbar").style.display = bb ? "" : "none";
+  if(bb){ setText("bossName", (G.e.units.includes(bb) ? "☠ " : "⚔ ")+bb.def.name); $("bossHp").style.width = Math.max(0, bb.hp/bb.maxHp*100).toFixed(1)+"%"; }
   // XP comparée
   for(const [sd, id] of [[G.p,"P"],[G.e,"E"]]){
     const lo2 = sd.era ? XP_REQ[sd.era-1] : 0, hi2 = XP_REQ[sd.era] ?? lo2;
@@ -2531,32 +2712,66 @@ function loop(now){
 }
 function showOverlay(html){ $("ovbox").innerHTML=html; $("overlay").style.display="grid"; }
 function hideOverlay(){ $("overlay").style.display="none"; }
-function setHud(v){ for(const id of ["top","bot","mini","rival"]) $(id).style.visibility = v?"visible":"hidden"; }
+function setHud(v){ if(!v) $("bossbar").style.display = "none"; for(const id of ["top","bot","mini","rival"]) $(id).style.visibility = v?"visible":"hidden"; }
+function menuHeader(){ return `<div class="runes">ᛟ ✶ ᚦ ✶ ᛉ</div><h1 class="title">FRONTS DU TEMPS</h1>`; }
 function startMenu(){
   newGame("normal", true); setHud(false);
   let best = null; try{ best = JSON.parse(localStorage.getItem("fdt_best")||"null"); }catch(e){}
-  showOverlay(`<div class="runes">ᛟ ✶ ᚦ ✶ ᛉ</div><h1 class="title">FRONTS DU TEMPS</h1>
-  <p class="sub">De la Préhistoire à l'ère moderne, 8 époques de guerre<br><i>…sous le regard de ce qui rêve entre les étoiles.</i></p>
+  const dm = dailyToday();
+  showOverlay(`${menuHeader()}
+  <p class="sub"><i>…sous le regard de ce qui rêve entre les étoiles.</i></p>
   <div class="row"><button class="fac ${pickFac==="h"?"on":""}" id="facH" onclick="pickF('h')"><span class="ico"></span><b>Humains</b><small>De la massue au char de combat</small></button>
   <button class="fac ${pickFac==="c"?"on":""}" id="facC" onclick="pickF('c')"><span class="ico"></span><b>Créatures</b><small>Ce qui rampe sous le monde</small></button></div>
-  <div class="row"><button class="big g" onclick="go('facile')">Facile</button><button class="big o" onclick="go('normal')">Normal</button><button class="big r" onclick="go('difficile')">Difficile</button></div>
+  <div class="modes">
+    <button class="mode" onclick="menuDiff('conquest')"><span class="e">⚔</span><b>Conquête</b><small>Détruis la base adverse</small></button>
+    <button class="mode" onclick="menuCampaign()"><span class="e">📜</span><b>Campagne</b><small>8 missions, une par époque</small></button>
+    <button class="mode" onclick="menuSurvival()"><span class="e">🌀</span><b>Survie</b><small>Vagues sans fin et reliques</small></button>
+    <button class="mode" onclick="menuDiff('siege')"><span class="e">🏰</span><b>Siège</b><small>Tiens 15 minutes</small></button>
+    <button class="mode" onclick="menuDiff('daily')"><span class="e">🎲</span><b>Défi du jour</b><small>${dm.name}</small></button>
+  </div>
   ${qualityRow()}
-  ${best?`<div class="best">★ Meilleur résultat : victoire en ${DIFF[best.d].label} en ${fmtTime(best.t)}</div>`:""}
+  ${best?`<div class="best">★ Meilleure conquête : victoire en ${DIFF[best.d].label} en ${fmtTime(best.t)}</div>`:""}
   <details><summary>Comment jouer</summary><ul>
     <li><b>Or</b> : produis des unités (en bas à gauche) et des tourelles (en bas à droite). Tuer des ennemis rapporte de l'or.</li>
-    <li><b>XP ★</b> : gagnée au combat. Quand la barre est pleine, appuie sur <b>Évoluer</b> pour passer à l'époque suivante.</li>
+    <li><b>XP ★</b> : quand la barre est pleine, <b>Évoluer</b> passe à l'époque suivante, soigne ta base et invoque le <b>boss</b> de l'époque.</li>
+    <li><b>Niveaux</b> : chaque unité monte de niveau en tuant (2, 5, 9, 14 victimes).</li>
     <li><b>Attaque spéciale</b> (bouton rond) : dévastatrice, recharge ${SPECIAL_CD} s.</li>
     <li>Production : 2 s (mêlée), 3 s (distance), 6 s (9 s à l'époque 7), 12 s (20 s dès l'époque 5). File de 5 unités.</li>
-    <li>Tourelles : jusqu'à 4 emplacements, revente à 50 %. Appui long sur un bouton = détails.</li>
-    <li>Glisse sur l'écran ou touche la mini-carte pour te déplacer.</li>
+    <li>Glisse sur l'écran ou touche la mini-carte pour te déplacer. Appui long sur un bouton = détails.</li>
   </ul></details>`);
   $("facH").querySelector(".ico").appendChild(unitIcon(UD(5,3,"h"), "#3b82f6"));
   $("facC").querySelector(".ico").appendChild(unitIcon(UD(6,3,"c"), "#a855f7"));
 }
+function menuDiff(mode){
+  const info = {conquest:["⚔ CONQUÊTE","Détruis la base adverse en traversant les 8 époques. Chaque évolution invoque le boss de l'époque."],
+    siege:["🏰 SIÈGE","Ta forteresse commence avec 4 emplacements et deux fois plus de PV. Tiens 15 minutes face à un ennemi qui s'enrichit sans cesse. Sa base est imprenable."],
+    daily:["🎲 DÉFI DU JOUR", "<b>"+dailyToday().name+"</b> : "+dailyToday().desc+((()=>{ const b = loadJSON("fdt_daily_"+Math.floor(Date.now()/86400000), 0); return b ? "<br>★ Ton meilleur temps aujourd'hui : "+fmtTime(b) : ""; })())]}[mode];
+  showOverlay(`<h1 class="title">${info[0]}</h1><p class="sub">${info[1]}</p>
+  <div class="row"><button class="big g" onclick="go('facile',{mode:'${mode}'})">Facile</button><button class="big o" onclick="go('normal',{mode:'${mode}'})">Normal</button><button class="big r" onclick="go('difficile',{mode:'${mode}'})">Difficile</button></div>
+  <div class="row"><button class="big" onclick="startMenu()">← Retour</button></div>`);
+}
+function menuCampaign(){
+  const st = loadJSON("fdt_camp_"+pickFac, []);
+  let h = "";
+  for(let i=0;i<8;i++){ const open = i===0 || (st[i-1]||0) > 0, n = st[i]||0;
+    h += `<button class="mis" ${open?"":"disabled"} onclick="go('normal',{mode:'campaign',mission:${i}})"><b>${i+1}. ${MISSIONS[i].t}</b><span>${ERAS[i].name}</span><br><span class="st">${"★".repeat(n)}${"☆".repeat(3-n)}</span></button>`; }
+  showOverlay(`<h1 class="title">📜 CAMPAGNE</h1><p class="sub">${pickFac==="h"?"Humains":"Créatures"} · époque verrouillée, un gardien protège chaque base ennemie.</p>
+  <div class="mlist">${h}</div><div class="row"><button class="big" onclick="startMenu()">← Retour</button></div>`);
+}
+function menuSurvival(){
+  const U = upg(), R2 = relics();
+  let h = "";
+  for(const u of UPG){ const l = U[u.id]||0, c = u.cost(l), maxed = l >= u.max;
+    h += `<button class="up" ${maxed || R2 < c ? "disabled" : ""} onclick="buyUpg('${u.id}')"><b>${u.name} <span class="lv">${l}/${u.max}</span></b>${u.desc}<br>${maxed ? "max" : "◆ "+c+" reliques"}</button>`; }
+  showOverlay(`<h1 class="title">🌀 SURVIE</h1><p class="sub">Les vagues de la Faille s'intensifient, un boss toutes les 5 vagues.<br>Record : vague <b>${loadJSON("fdt_surv",0)}</b> · Reliques : <b style="color:var(--gold)">◆ ${R2}</b> (bonus valables uniquement en Survie)</p>
+  <div class="upg">${h}</div>
+  <div class="row"><button class="big g" onclick="go('normal',{mode:'survival'})">Entrer dans la Faille</button><button class="big" onclick="startMenu()">← Retour</button></div>`);
+}
+function buyUpg(id){ const U = upg(), u = UPG.find(x=>x.id===id), l = U[id]||0, c = u.cost(l); if(l>=u.max || relics()<c) return; saveJSON("fdt_relics", relics()-c); U[id] = l+1; saveJSON("fdt_upg", U); sfx("build"); menuSurvival(); }
 let pickFac = "h";
 try{ pickFac = localStorage.getItem("fdt_fac")==="c" ? "c" : "h"; }catch(e){}
 function pickF(f){ pickFac = f; try{ localStorage.setItem("fdt_fac", f); }catch(e){} $("facH").classList.toggle("on", f==="h"); $("facC").classList.toggle("on", f==="c"); sfx("click"); }
-function go(d){ hideOverlay(); newGame(d, false, pickFac); setHud(true); resize(); G.cam=0; last=performance.now(); sfx("click"); }
+function go(d, opts){ hideOverlay(); newGame(d, false, pickFac, opts||{}); setHud(true); resize(); G.cam=0; last=performance.now(); sfx("click"); }
 resize(); startMenu(); requestAnimationFrame(loop);
 </script>
 </body>
