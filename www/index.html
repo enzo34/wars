@@ -383,13 +383,31 @@ function explosionFx(x,y,r,big,pal){
 // =====================================================================
 //  SIMULATION
 // =====================================================================
-function damageUnit(u, dmg, by){
+// niveaux : victimes nécessaires pour les niveaux 1 à 4
+const LVL_K = [2, 5, 9, 14];
+const LVL_NAME = ["", "Aguerri", "Vétéran", "Élite", "Champion"];
+function gainKill(src){
+  if(!src || src.dead) return;
+  src.kills = (src.kills||0) + 1;
+  if(src.lvl < 4 && src.kills >= LVL_K[src.lvl]){
+    src.lvl++;
+    src.maxHp = Math.round(src.maxHp*1.22); src.hp = Math.min(src.maxHp, src.hp*1.22 + src.maxHp*0.3); src.dm *= 1.18;
+    sprite(src.def, src.lvl);
+    if(onScreen(src.x)){
+      for(let i=0;i<16;i++) addPart({type:"spark", x:src.x+(Math.random()-0.5)*src.def.w, y:GY-Math.random()*src.def.h, vx:(Math.random()-0.5)*40, vy:-40-Math.random()*60, life:0.9, max:0.9, r:2.5, c:i%2?"#fde68a":"#f59e0b", g:-30});
+      addPart({type:"ring", x:src.x, y:GY-src.def.h*0.5, vx:0, vy:0, life:0.5, max:0.5, r:src.def.h*0.7, c:"#fde68a"});
+      addText(src.x, GY-src.def.h-24, "Niv. "+src.lvl+" · "+LVL_NAME[src.lvl], "#fde68a"); sfx("build");
+    }
+  }
+}
+function damageUnit(u, dmg, by, src){
   if(u.dead) return;
   u.hp -= dmg; u.hit = 0.1;
   if(ORG.has(u.def.visual) && Math.random()<0.5 && onScreen(u.x)) sparks(u.x, GY-u.def.h*0.55, 2, u.def.fac==="c" ? CRE.glow[u.def.era] : "#6b0f0f");
   if(u.hp<=0){
     u.dead = true;
-    const mul = by===G.e ? G.diff.mul : 1;
+    gainKill(src);
+    const mul = (by===G.e ? G.diff.mul : 1) * (1 + (u.lvl||0)*0.25);
     const gold = Math.round(u.def.cost*1.2*mul), xp = Math.round(u.def.cost*mul);
     by.gold += gold; by.xp += xp;
     opp(by).xp += Math.round(u.def.cost*0.25);
@@ -406,18 +424,18 @@ function damageBase(s, dmg){
   s.hp -= dmg;
   if(s.hp<=0){ s.hp=0; endGame(s!==G.p); }
 }
-function explode(x, y, splash, dmg, by, big, pal){
+function explode(x, y, splash, dmg, by, big, pal, src){
   const o = opp(by);
-  for(const u of o.units) if(!u.dead && Math.abs(u.x-x) <= splash + u.def.w/2) damageUnit(u, dmg, by);
+  for(const u of o.units) if(!u.dead && Math.abs(u.x-x) <= splash + u.def.w/2) damageUnit(u, dmg, by, src);
   if(Math.abs(o.front - x) <= splash) damageBase(o, dmg*0.5);
   explosionFx(x, y, splash*0.7, big, pal);
 }
 const PSPEED = {acid:460, beam:5000, bile:420, orb:500, stone:420, arrow:520, bolt:600, bullet:1100, flame:300, shell:520, rock:380, fire:420, laser:5000, missile:620};
-function fire(target, def, side, x, y){
+function fire(target, def, side, x, y, src){
   const tx = target.base ? (side===G.p ? EB : PB) : target.x;
   const ty = target.base ? GY-70 : GY - target.def.h*0.55;
   const dist = Math.hypot(tx-x, ty-y);
-  G.proj.push({x, y, sx:x, sy:y, tx, ty, target, t:0, dur:Math.max(0.05, dist/(PSPEED[def.proj]||500)), dmg:def.dmg, splash:def.splash||0, side, kind:def.proj,
+  G.proj.push({x, y, sx:x, sy:y, tx, ty, target, t:0, dur:Math.max(0.05, dist/(PSPEED[def.proj]||500)), dmg:def.dmg*(src ? src.dm : 1), splash:def.splash||0, side, kind:def.proj, src,
     arc: ["stone","rock","shell","fire","acid","bile"].includes(def.proj) ? Math.min(150, dist*0.28) : def.proj==="arrow"||def.proj==="bolt" ? Math.min(60,dist*0.12) : def.proj==="missile" ? Math.min(90,dist*0.2) : 0, init:true});
   if(onScreen(x)){
     if(def.proj==="bullet"||def.proj==="shell"){ muzzle(x,y,side.dir,def.proj==="shell"); sfx(def.proj==="shell"?"boom":"shot", def.proj==="shell"?0.35:0.7); }
@@ -437,7 +455,7 @@ function step(dt){
       const blocked = s.units.some(u => Math.abs(u.x - spawnX) < (u.def.w+d.w)/2 + 2);
       if(s.prodT < d.time) s.prodT += dt;
       if(s.prodT >= d.time && !blocked){
-        s.units.push({id:++G.uid, def:d, x:spawnX, hp:d.hp, cdT:0.3, walk:Math.random()*5, atk:0, hit:0, dead:false, moving:false});
+        s.units.push({id:++G.uid, def:d, x:spawnX, hp:d.hp, maxHp:d.hp, dm:1, lvl:0, kills:0, cdT:0.3, walk:Math.random()*5, atk:0, hit:0, dead:false, moving:false});
         s.queue.shift(); s.prodT = 0;
       }
     }
@@ -470,9 +488,9 @@ function step(dt){
       u.cdT -= dt; u.atk = Math.max(0,u.atk-dt); u.hit = Math.max(0,u.hit-dt);
       if(target && u.cdT<=0){
         u.cdT = d.cd; u.atk = 0.25;
-        if(d.proj){ fire(target, d, s, u.x + dir*d.w*0.55, GY - d.h*0.72); }
+        if(d.proj){ fire(target, d, s, u.x + dir*d.w*0.55, GY - d.h*0.72, u); }
         else {
-          if(target.base) damageBase(o, d.dmg); else damageUnit(target, d.dmg, s);
+          if(target.base) damageBase(o, d.dmg*u.dm); else damageUnit(target, d.dmg*u.dm, s, u);
           if(onScreen(u.x)){ sfx("melee",0.7); sparks(u.x + dir*(d.w/2+3), GY-d.h*0.6, 3, "#e5e7eb"); }
         }
       }
@@ -502,9 +520,9 @@ function step(dt){
     if((pr.kind==="meteor"||pr.kind==="firepot"||pr.kind==="fire") && Math.random()<0.8) addPart({type:"spark", x:pr.x, y:pr.y, vx:(Math.random()-0.5)*30, vy:-20, life:0.3, max:0.3, r:3, c:Math.random()<0.5?"#f97316":"#fde047", g:0});
     if(pr.t>=1){
       pr.done = true;
-      if(pr.splash>0) explode(pr.tx, pr.ty, pr.splash, pr.dmg, pr.side, pr.special && pr.kind!=="arrowRain", pr.kind==="bile"||pr.kind==="orb");
+      if(pr.splash>0) explode(pr.tx, pr.ty, pr.splash, pr.dmg, pr.side, pr.special && pr.kind!=="arrowRain", pr.kind==="bile"||pr.kind==="orb", pr.src);
       else if(pr.target && pr.target.base) damageBase(opp(pr.side), pr.dmg);
-      else if(pr.target && !pr.target.dead){ damageUnit(pr.target, pr.dmg, pr.side); if(pr.kind!=="laser") sparks(pr.x,pr.y,2,"#7f1d1d"); }
+      else if(pr.target && !pr.target.dead){ damageUnit(pr.target, pr.dmg, pr.side, pr.src); if(pr.kind!=="laser") sparks(pr.x,pr.y,2,"#7f1d1d"); }
     }
   }
   G.proj = G.proj.filter(p=>!p.done);
@@ -540,23 +558,43 @@ function ai(s){
   const threat = o.units.filter(u => Math.abs(u.x - s.front) < 900).length;
   if(s.specialCd<=0 && (threat>=5 || (threat>=2 && s.hp < s.maxHp*0.5))) useSpecial(s);
   for(let i=0;i<s.slots;i++){ const t=s.turrets[i]; if(t && t.def.era < s.era && s.gold > TD(s.era,t.def.k,s.fac).cost*2.5){ sellTurret(s,i); buyTurret(s,Math.min(3,t.def.k+1)); } }
-  // plan de production : l'IA choisit une unité et économise pour elle (sauf danger)
-  const W8 = {facile:[0.45,0.3,0.17,0.08], normal:[0.32,0.28,0.22,0.18], difficile:[0.26,0.26,0.24,0.24]}[s===G.e ? G.diffKey : "normal"] || [0.32,0.28,0.22,0.18];
-  if(s.aiPlan===undefined || s.aiPlanEra!==s.era){ const r = Math.random(); let acc = 0, k = 0; for(; k<3; k++){ acc += W8[k]; if(r < acc) break; } s.aiPlan = k; s.aiPlanEra = s.era; }
+  // ---- production adaptative : selon l'or, l'XP et l'armée qui arrive en face ----
+  const val = u => u.def.cost * (u.hp/(u.maxHp||u.def.hp)) * (1 + (u.lvl||0)*0.3);
+  const near = u => 1 + Math.max(0, 1 - Math.abs(u.x - s.front)/(W*0.6));        // plus menaçant quand il approche
+  const enemyStr = o.units.reduce((a,u)=>a + val(u)*near(u), 0) + o.queue.reduce((a,d)=>a + d.cost*0.6, 0);
+  const ownStr = s.units.reduce((a,u)=>a + val(u), 0) + s.queue.reduce((a,d)=>a + d.cost*0.8, 0);
+  const ratio = (enemyStr + 1) / (ownStr + 1);
+  const danger = o.units.some(u => Math.abs(u.x - s.front) < 450);
+  const nearEvo = s.era < 7 && s.xp >= XP_REQ[s.era]*0.85;
+  // composition adverse → contre
+  const nR = o.units.filter(u=>u.def.range>10).length, nH = o.units.filter(u=>u.def.k>=2).length, nT = Math.max(1, o.units.length);
+  const skill = {facile:0.55, normal:0.8, difficile:1}[s===G.e ? G.diffKey : "normal"] ?? 0.8;
+  const base = {facile:[0.42,0.3,0.18,0.1], normal:[0.3,0.28,0.23,0.19], difficile:[0.24,0.26,0.26,0.24]}[s===G.e ? G.diffKey : "normal"] || [0.3,0.28,0.23,0.19];
+  const wts = base.slice();
+  wts[0] += skill*0.25*(nR/nT); wts[2] += skill*0.2*(nR/nT);          // beaucoup de tireurs → mêlée rapide + lourds
+  wts[1] += skill*0.2*(nH/nT); wts[3] += skill*0.25*(nH/nT);          // beaucoup de lourds → tireurs + super-unités
+  if(ratio > 1.4) { wts[0] += 0.15; wts[1] += 0.1; }                    // débordé : unités rapides à produire
+  const pick = () => { const tot = wts.reduce((a,b)=>a+b,0); let r = Math.random()*tot, k = 0; for(; k<3; k++){ r -= wts[k]; if(r < 0) break; } return k; };
+  if(s.aiPlan===undefined || s.aiPlanEra!==s.era) { s.aiPlan = pick(); s.aiPlanEra = s.era; }
   const planCost = UD(s.era, s.aiPlan, s.fac).cost;
-  const reserve = s.aiPlan>=2 ? planCost : 0;
+  // combien produire : rien n'est fixé, cela dépend du rapport de force et de l'or
+  const want = danger || ratio > 1.6 ? 5 : ratio > 1.1 ? 3 : ratio > 0.7 ? 2 : 1;
+  // tourelles / emplacements : seulement avec un surplus, et pas juste avant d'évoluer
+  const reserve = (s.aiPlan>=2 ? planCost : 0) + (danger ? 0 : planCost*0.3);
   const free = s.turrets.slice(0,s.slots).some(t=>!t);
-  if(free && G.t>20){
-    for(let k=3;k>=0;k--){ const c=TD(s.era,k,s.fac).cost; if(s.gold >= c*1.4 + reserve && Math.random()<0.5){ buyTurret(s,k); break; } }
-  } else if(!free && s.slots<4 && s.gold > SLOT_COST[s.slots]*1.6 + reserve) buySlot(s);
-  const pressure = o.units.length - s.units.length;
-  const danger = o.units.some(u => Math.abs(u.x - s.front) < 420) || pressure > 3;
-  if(s.queue.length < (pressure>2?4:2)){
-    if(s.gold >= planCost){ queueUnit(s, s.aiPlan); s.aiPlan = undefined; }
-    else if(danger || s.queue.length===0 && s.units.length < 2){
-      let k = Math.min(s.aiPlan, 1); while(k>0 && s.gold < UD(s.era,k,s.fac).cost) k--;
-      if(s.gold >= UD(s.era,k,s.fac).cost) queueUnit(s,k);
+  if(!nearEvo && G.t>20 && (ratio < 1.3 || s.hp < s.maxHp*0.6)){
+    if(free){ for(let k=3;k>=0;k--){ const c=TD(s.era,k,s.fac).cost; if(s.gold >= c*1.3 + reserve && Math.random()<0.5*skill+0.2){ buyTurret(s,k); break; } } }
+    else if(s.slots<4 && s.gold > SLOT_COST[s.slots]*1.5 + reserve) buySlot(s);
+  }
+  let guard = 0;
+  while(s.queue.length < want && guard++ < 5){
+    if(s.gold >= planCost){ queueUnit(s, s.aiPlan); s.aiPlan = pick(); continue; }
+    if(danger || ratio > 1.3 || (s.units.length===0 && s.queue.length===0)){
+      let k = ratio > 1.3 && nR/nT > 0.5 ? 0 : Math.min(s.aiPlan, 1);
+      while(k>0 && s.gold < UD(s.era,k,s.fac).cost) k--;
+      if(s.gold >= UD(s.era,k,s.fac).cost){ queueUnit(s,k); continue; }
     }
+    break;   // sinon : on économise pour l'unité prévue
   }
 }
 function endGame(won){
@@ -1071,17 +1109,17 @@ function postFx(src, t){
   c.globalCompositeOperation = "source-over";
   return o;
 }
-function sprite(d){
+function sprite(d, lvl=0){
   const Rr = Math.min(5, Math.max(2, scale*1.6));
   if(Math.abs(Rr-SPR_R) > 0.08){ SPR = {}; SPR_R = Rr; }
-  const key = d.fac+d.era+"_"+d.k; if(SPR[key]) return SPR[key];
-  const zs = d.fac==="c" ? crSize(d.era) : 1, b = BOUNDS[d.visual].map(v=>v*zs), k = US*Rr, pad = 4;
+  const key = d.fac+d.era+"_"+d.k+"_L"+lvl; if(SPR[key]) return SPR[key];
+  const zs = (d.fac==="c" ? crSize(d.era) : 1) * (lvl>=4 ? 1.16 : lvl>=2 ? 1.06 : 1) * (lvl>0 ? 1.1 : 1), b = BOUNDS[d.visual].map(v=>v*zs), k = US*Rr, pad = 4;
   const w = Math.ceil((b[0]+b[1])*k)+pad*2, h = Math.ceil((b[2]+6)*k)+pad*2, ox = b[0]*k+pad, oy = b[2]*k+pad;
   const team = d.fac==="c" ? "#a855f7" : "#3b82f6", th = Math.max(1.5, Rr*1.1);
   const mk = (walk, atk, moving) => {
     const c2 = document.createElement("canvas"); c2.width = w; c2.height = h;
     const prev = ctx; ctx = trackCtx(c2.getContext("2d"));
-    try{ ctx.translate(ox,oy); ctx.scale(Rr,Rr); drawUnitBody(d, team, walk, atk, false, moving); } finally { ctx = prev; }
+    try{ ctx.translate(ox,oy); ctx.scale(Rr,Rr); drawUnitBody(d, team, walk, atk, false, moving, lvl); } finally { ctx = prev; }
     return postFx(c2, th);
   };
   const per = Math.PI*2/9;
@@ -1104,7 +1142,8 @@ function bakeTick(budget){
 function spriteFull(d){ const S = sprite(d); while(S.jobs.length) S.jobs.shift()(); return S; }
 const NW = 12, NA = 7;
 function unitFrame(u){
-  const S = sprite(u.def);
+  let S = sprite(u.def, u.lvl||0);
+  if(!S.idle) S = sprite(u.def, 0);
   if(u.atk>0) return [S, S.atkF[Math.min(NA-1, Math.floor((1-u.atk/0.25)*NA))] || S.idle];
   if(u.moving){ const ph = ((u.walk*9)/(Math.PI*2)) % 1; return [S, S.walkF[Math.floor(ph*NW) % NW] || S.idle]; }
   return [S, S.idle];
@@ -1130,26 +1169,86 @@ function drawUnit(u, s){
       ctx.globalCompositeOperation = "source-over"; }
   }
   ctx.restore();
-  const w = Math.max(22, d.w*0.8), r = Math.max(0,u.hp/d.hp);
+  const w = Math.max(22, d.w*0.8), r = Math.max(0,u.hp/(u.maxHp||d.hp));
+  const lvH = (u.lvl>=4 ? 1.16 : u.lvl>=2 ? 1.06 : 1);
+  if(u.lvl>0){ // chevrons de grade
+    const y = GY-d.h*lvH-(r<1?20:13);
+    for(let i=0;i<u.lvl;i++){ const cx = u.x + (i-(u.lvl-1)/2)*6; ctx.fillStyle = u.lvl>=4 ? "#fbbf24" : "#e5c07b"; ctx.strokeStyle = "#1a0f08"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx-2.6, y); ctx.lineTo(cx, y-2.6); ctx.lineTo(cx+2.6, y); ctx.lineTo(cx+2.6, y+1.6); ctx.lineTo(cx, y-1); ctx.lineTo(cx-2.6, y+1.6); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  }
   if(r<1){
-    const y = GY-d.h-12;
+    const y = GY-d.h*lvH-12;
     ctx.fillStyle="rgba(0,0,0,.6)"; rr(u.x-w/2-1, y-1, w+2, 6, 3); ctx.fill();
     ctx.fillStyle = r>0.5? s.teamLight : r>0.25?"#facc15":"#ef4444"; rr(u.x-w/2, y, w*r, 4, 2); ctx.fill();
   }
 }
 let ATKP = 0, MOVING = true;
-function drawUnitBody(d, team, walk, atk01, hit, moving){
+function drawUnitBody(d, team, walk, atk01, hit, moving, lvl=0){
   const E=ERAS[d.era], v=d.visual;
   const sw = moving===false ? 0 : Math.sin(walk*9), atk = atk01>0 ? Math.sin((atk01/0.25)*Math.PI) : 0;
   ATKP = atk01>0 ? 1 - atk01/0.25 : 0; MOVING = moving!==false;
   ctx.save(); ctx.scale(US,US);
+  if(lvl>=2){ const z = lvl>=4 ? 1.16 : 1.06; ctx.scale(z,z); }
+  if(lvl>=4) drawLevelAura(d, team, walk);
   ctx.strokeStyle=OL; ctx.lineWidth=1.0; ctx.lineJoin="round"; ctx.lineCap="round";
   if(v==="foot"||v==="flame") drawHuman(d, E, team, walk, hit, moving, false);
   else if(v==="mount") drawMount(d, E, team, sw, atk, hit, walk);
   else if(v==="beast") drawBeast(d, team, sw, atk, hit);
   else if(CREATURE_V.has(v)) drawCreature(d, team, walk, sw, atk, hit, moving);
   else drawVehicle(d, team, walk, atk, hit);
+  if(lvl>0) drawLevelGear(d, lvl, team, walk);
   ctx.restore();
+}
+// ---- équipement gagné avec les niveaux ----
+function lvlAnchors(d){
+  const v = d.visual, z = d.fac==="c" ? crSize(d.era) : 1;
+  const A = {foot:{h:[2,-46],s:[1.4,-35.6],b:[0,-22.5],t:[-1,-30]}, flame:{h:[2,-46],s:[1.4,-35.6],b:[0,-22.5],t:[-1,-30]},
+    mount:{h:[-1,-62],s:[-1.6,-51.6],b:[-3,-38.5],t:[-4,-46]}, beast:{h:[30,-54],s:[-4,-60],b:[-4,-40],t:[0,-40]},
+    ram:{h:[0,-57],s:[20,-44],b:[0,-24],t:[0,-34]}, wagon:{h:[0,-47],s:[22,-38],b:[0,-22],t:[0,-30]}, cannon:{h:[-6,-26],s:[10,-20],b:[-16,-10],t:[-10,-14]},
+    jeep:{h:[-6,-44],s:[18,-30],b:[0,-16],t:[0,-24]}, tank:{h:[-2,-52],s:[24,-30],b:[0,-20],t:[0,-26]},
+    deep:{h:[3,-44],s:[-2,-31],b:[0,-18],t:[0,-25]}, eye:{h:[0,-42],s:[-6,-34],b:[0,-22],t:[0,-30]}, hound:{h:[20,-36],s:[-6,-32],b:[0,-22],t:[0,-26]},
+    shoggoth:{h:[0,-50],s:[-12,-40],b:[0,-10],t:[0,-26]}, spawn:{h:[12,-80],s:[-6,-58],b:[0,-30],t:[0,-44]}}[v];
+  const m = p2 => [p2[0]*z, p2[1]*z];
+  return {h:m(A.h), s:m(A.s), b:m(A.b), t:m(A.t)};
+}
+function drawLevelAura(d, team, walk){
+  const A = lvlAnchors(d), col = d.fac==="c" ? CRE.glow[d.era] : "#fbbf24";
+  ctx.save(); ctx.globalAlpha = 0.5;
+  for(let i=0;i<5;i++){ const ph = walk*2 + i*1.3; ctx.fillStyle = i%2 ? "#1a0a0a" : mix(team,"#000000",0.5);
+    ctx.beginPath(); ctx.moveTo(A.t[0]-8+i*4, A.b[1]+6); ctx.quadraticCurveTo(A.t[0]-14+i*3+Math.sin(ph)*3, A.t[1], A.t[0]-6+i*3, A.h[1]-6-i*2); ctx.lineTo(A.t[0]-3+i*3, A.h[1]-2); ctx.quadraticCurveTo(A.t[0]-8+i*3, A.t[1], A.t[0]-4+i*4, A.b[1]+6); ctx.fill(); }
+  ctx.globalAlpha = 0.35; ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(A.t[0], 0, 16, 3.5, 0, 0, Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+function drawLevelGear(d, lvl, team, walk){
+  const A = lvlAnchors(d), cr = d.fac==="c", veh = !ORG.has(d.visual);
+  const gold = "#d4a542", steel = "#a8acb4", bone = "#d8cfba", blood = "#7a1212";
+  ctx.strokeStyle = OL; ctx.lineWidth = 1;
+  // niv. 1 : épaulière / pointes / plaque de blindage
+  if(cr){ for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(A.s[0]-3+i*3, A.s[1]+1); ctx.lineTo(A.s[0]-4+i*3, A.s[1]-5-i); ctx.lineTo(A.s[0]-1+i*3, A.s[1]+1); ctx.closePath(); fs(bone); } }
+  else if(veh){ rr(A.t[0]-10, A.t[1]-3, 20, 7, 1.5); fs(lvl>=3 ? gold : steel); ctx.fillStyle = "#2a2a2e"; for(let x=-8;x<=8;x+=4){ circ(A.t[0]+x, A.t[1]+0.5, 0.7); ctx.fill(); } }
+  else { ctx.beginPath(); ctx.ellipse(A.s[0]-0.5, A.s[1]+0.6, 4.4, 3, -0.2, Math.PI, Math.PI*2.05); ctx.closePath(); fs(lvl>=3 ? gold : steel);
+    ctx.beginPath(); ctx.moveTo(A.s[0]-3.6, A.s[1]-1.4); ctx.lineTo(A.s[0]-3, A.s[1]-5); ctx.lineTo(A.s[0]-1.6, A.s[1]-1.8); ctx.closePath(); fs(steel); }
+  if(lvl<2) return;
+  // niv. 2 : panache rouge / couronne d'os / trophée
+  if(cr){ for(let i=0;i<5;i++){ const a = -Math.PI/2 + (i-2)*0.4; ctx.beginPath(); ctx.moveTo(A.h[0]+Math.cos(a)*3-1, A.h[1]+Math.sin(a)*3+1); ctx.lineTo(A.h[0]+Math.cos(a)*(7+(i%2)*2), A.h[1]+Math.sin(a)*(7+(i%2)*2)); ctx.lineTo(A.h[0]+Math.cos(a)*3+1, A.h[1]+Math.sin(a)*3+1); ctx.closePath(); fs(bone); } }
+  else if(veh){ ctx.beginPath(); circ(A.s[0], A.s[1], 2.8); fs(bone); ctx.fillStyle = "#1a1210"; ctx.fillRect(A.s[0]-1.4, A.s[1]-0.6, 1, 1); ctx.fillRect(A.s[0]+0.4, A.s[1]-0.6, 1, 1);
+    for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(A.s[0]+3, A.s[1]+3+i*2.5); ctx.lineTo(A.s[0]+8, A.s[1]+4+i*2.5); ctx.lineTo(A.s[0]+3, A.s[1]+5+i*2.5); fs(steel); } }
+  else { ctx.fillStyle = blood; ctx.beginPath(); ctx.moveTo(A.h[0]-1, A.h[1]+1); ctx.quadraticCurveTo(A.h[0]-6, A.h[1]-6+Math.sin(walk*9)*0.8, A.h[0]-11, A.h[1]+1); ctx.quadraticCurveTo(A.h[0]-6, A.h[1]-2, A.h[0]-1, A.h[1]+3); ctx.fill(); ctx.stroke();
+    circ(A.b[0]+4.2, A.b[1]+2.6, 1.7); fs(bone); ctx.fillStyle = "#1a1210"; ctx.fillRect(A.b[0]+3.4, A.b[1]+2.2, 0.6, 0.6); ctx.fillRect(A.b[0]+4.6, A.b[1]+2.2, 0.6, 0.6); }
+  if(lvl<3) return;
+  // niv. 3 : liserés d'or / runes
+  if(cr){ ctx.strokeStyle = CRE.glow[d.era]; ctx.lineWidth = 0.8; for(let i=0;i<3;i++){ const x = A.t[0]-4+i*4, y = A.t[1]-2+i; ctx.beginPath(); ctx.moveTo(x,y-2.5); ctx.lineTo(x+1.5,y+1.5); ctx.lineTo(x-1.5,y+1.5); ctx.closePath(); ctx.stroke(); } }
+  else { ctx.strokeStyle = gold; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(A.t[0]-4, A.t[1]-5); ctx.lineTo(A.t[0]+4, A.t[1]-5); ctx.moveTo(A.t[0]-4, A.t[1]+6); ctx.lineTo(A.t[0]+4, A.t[1]+6); ctx.stroke(); ctx.fillStyle = gold; circ(A.t[0], A.t[1], 1.4); ctx.fill(); }
+  ctx.strokeStyle = OL; ctx.lineWidth = 1;
+  if(lvl<4) return;
+  // niv. 4 : champion — couronne, étendard
+  if(cr){ crHalo(A.h[0], A.h[1]-6, 6, CRE.glow[d.era], true); }
+  else { ctx.beginPath(); ctx.moveTo(A.h[0]-4, A.h[1]-1); for(let i=0;i<5;i++){ ctx.lineTo(A.h[0]-4+i*2, A.h[1]-(i%2 ? 2.5 : 6)); } ctx.lineTo(A.h[0]+4, A.h[1]-1); ctx.closePath(); fs(gold);
+    ctx.fillStyle = "#b91c1c"; circ(A.h[0], A.h[1]-3, 0.9); ctx.fill(); }
+  if(veh || d.visual==="mount"){ const fx = A.t[0]-12, fy = A.h[1]-6; ctx.strokeStyle = "#2a1a10"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(fx, A.t[1]); ctx.lineTo(fx, fy-14); ctx.stroke();
+    ctx.fillStyle = mix(team,"#1a0a08",0.3); ctx.beginPath(); ctx.moveTo(fx, fy-14); ctx.lineTo(fx-10, fy-12+Math.sin(walk*6)*1.5); ctx.lineTo(fx-7, fy-9); ctx.lineTo(fx-10, fy-6+Math.sin(walk*6)*1.5); ctx.lineTo(fx, fy-4); ctx.closePath(); ctx.fill(); ctx.strokeStyle = OL; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = gold; circ(fx-4, fy-9, 1.2); ctx.fill(); }
+  ctx.strokeStyle = OL; ctx.lineWidth = 1;
 }
 function headgear(e, team){
   if(e===0){ ctx.fillStyle="#3f2a14"; ctx.beginPath(); ctx.arc(0,-41,6.5,Math.PI*1.05,Math.PI*1.95); ctx.fill(); ctx.fillStyle=team; ctx.fillRect(-6,-42,12,2.5); }
@@ -2174,6 +2273,7 @@ function drawLights(E){
   // unités : yeux luisants des adversaires, phares
   for(const s of [G.e, G.p]) for(const u of s.units){
     if(!onScreen(u.x)) continue; const d = u.def, eye = EYE[d.visual];
+    if(u.lvl>=3) light(u.x, GY - d.h*0.55, d.h*(u.lvl>=4?1.1:0.8), s.fac==="c" ? CRE.glow[d.era] : "#f59e0b", u.lvl>=4 ? 0.4 : 0.25);
     if(eye && s.fac==="c"){ const z2 = crSize(d.era), gc = CRE.glow[d.era], ex = u.x + s.dir*eye[0]*US*z2, ey = GY + eye[1]*US*z2; light(ex, ey, 8+d.era*1.4, gc, 0.9); ctx.globalAlpha=1; ctx.fillStyle="#ffffff"; ctx.fillRect(ex-0.8,ey-0.8,1.6,1.6);
       if(d.era>=6){ const hy = {deep:-51,eye:-47,shoggoth:-58,spawn:-92,hound:-40}[d.visual]||-50; light(u.x + s.dir*(d.visual==="spawn"?12:3)*US*z2, GY + hy*US*z2, 30, gc, 0.35+0.15*Math.sin(G.t*3)); } }
     else if(!eye) light(u.x + s.dir*d.w*0.5, GY - d.h*0.45, 26, s===G.e?"#c084fc":"#fef3c7", 0.35);
