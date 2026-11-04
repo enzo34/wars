@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- épée -->
+    <path android:fillColor="#E5E7EB" android:strokeColor="#1B1611" android:strokeWidth="1.5"
+        android:pathData="M36,30 L41,30 L66,62 L62,66 Z" />
+    <path android:fillColor="#A16207" android:strokeColor="#1B1611" android:strokeWidth="1.5"
+        android:pathData="M58,60 L68,68 L66,70 L56,62 Z M64,66 L72,74 L70,76 L62,68 Z" />
+    <!-- fusil -->
+    <path android:fillColor="#27272A" android:strokeColor="#1B1611" android:strokeWidth="1.5"
+        android:pathData="M72,30 L76,33 L46,68 L42,65 Z" />
+    <path android:fillColor="#7C4A1E" android:strokeColor="#1B1611" android:strokeWidth="1.5"
+        android:pathData="M46,62 L52,67 L44,77 L37,72 Z" />
+    <!-- drapeau -->
+    <path android:fillColor="#3B82F6" android:strokeColor="#1B1611" android:strokeWidth="1.2"
+        android:pathData="M54,24 L68,28 L54,33 Z" />
+    <path android:strokeColor="#1B1611" android:strokeWidth="1.8" android:pathData="M54,22 L54,44" />
+</vector>

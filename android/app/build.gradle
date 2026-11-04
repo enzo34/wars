@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.frontsdutemps.game'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.frontsdutemps.game'
+        minSdk 26
+        targetSdk 34
+        versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '1')
+        versionName "1.0." + (System.getenv('VERSION_CODE') ?: '0')
+    }
+
+    // Le jeu (www/index.html) est embarqué directement comme ressource de l'APK
+    sourceSets {
+        main { assets.srcDirs = ['../../www'] }
+    }
+
+    // Signature : clé fournie par variables d'environnement (CI), sinon clé de debug.
+    def ks = System.getenv('SIGN_STORE_FILE')
+    signingConfigs {
+        fdt {
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('SIGN_STORE_PASSWORD')
+                keyAlias System.getenv('SIGN_KEY_ALIAS')
+                keyPassword System.getenv('SIGN_STORE_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig ks ? signingConfigs.fdt : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
