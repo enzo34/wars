@@ -1515,7 +1515,7 @@ function rigShade(im, col, a){ const c = document.createElement("canvas"); c.wid
   for(const key in D){ const r = D[key], img = {}; RIG_PENDING++;
     let left = Object.keys(r.parts).length;
     for(const n in r.parts){ const im = new Image();
-      im.onload = () => { if(--left===0){ for(const f of ["farThigh","farShin","farArm"]) if(img[f]) img[f+"_d"] = rigShade(img[f], "#05060a", 0.42); RIGS[key] = {...r, img, tint:{}}; RIG_PENDING--; SPR = {}; } };
+      im.onload = () => { if(--left===0){ for(const f of ["farThigh","farShin","farArm"]) if(img[f]) img[f+"_d"] = rigShade(img[f], "#05060a", 0.42); RIGS[key] = {...r, img, tint:{}}; RIG_PENDING--; SPR = {}; if(!RIG_PENDING){ try{ if(window.__G && __G.p) buildButtons(); }catch(e){} } } };
       im.src = r.parts[n].src; img[n] = im; } } })();
 function rigOf(d){ return d.boss ? null : RIGS[d.fac+d.era+"_"+d.k] || null; }
 const RIG_SWORD = {};
