@@ -19,11 +19,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
-
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.9"
+      - name: Installer Gradle
+        run: |
+          curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          echo "/tmp/gradle-8.9/bin" >> "$GITHUB_PATH"
+          echo "SDK Android : $ANDROID_HOME"
 
       # Clé de signature stable : secrets du dépôt si présents, sinon clé générée une fois et gardée en cache
       - name: Récupérer la clé de signature
@@ -66,13 +67,13 @@ jobs:
           path: FrontsDuTemps.apk
 
       - name: Publier une Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: Fronts du Temps v1.0.${{ github.run_number }}
-          target_commitish: ${{ github.sha }}
-          make_latest: true
-          body: |
-            APK Android de Fronts du Temps (branche `${{ github.ref_name }}`).
-            Sur ton téléphone : télécharge **FrontsDuTemps.apk** ci-dessous, ouvre-le et autorise l'installation depuis cette source.
-          files: FrontsDuTemps.apk
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v1.0.${{ github.run_number }}
+        run: |
+          cat > notes.md <<NOTES
+          APK Android de Fronts du Temps (branche \`${{ github.ref_name }}\`).
+
+          Sur ton téléphone : télécharge **FrontsDuTemps.apk** ci-dessous, ouvre-le et autorise l'installation depuis cette source.
+          NOTES
+          gh release create "$TAG" FrontsDuTemps.apk --target "${{ github.sha }}" --title "Fronts du Temps $TAG" --notes-file notes.md --latest
