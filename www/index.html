@@ -888,7 +888,7 @@ const fmtTime = t => Math.floor(t/60)+":"+String(Math.floor(t%60)).padStart(2,"0
 //  RENDU
 // =====================================================================
 const cv = document.getElementById("c");
-let PIXEL = true; try{ PIXEL = localStorage.getItem("fdt_pixel")!=="0"; }catch(e){}
+let PIXEL = false; try{ PIXEL = localStorage.getItem("fdt_pixel")==="1"; }catch(e){}
 let ctx = cv.getContext("2d", PIXEL ? {willReadFrequently:true} : undefined);
 let PXR = 1;     // pixels de canvas par pixel CSS (pour les entrées tactiles)
 // ---------- palette « encre et parchemin » + tramage ordonné ----------
