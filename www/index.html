@@ -689,7 +689,8 @@ function step(dt){
       const blocked = target || gapA < 4 || gapE <= 1 || gapB <= 1;
       u.moving = !blocked;
       if(!blocked){
-        u.x += dir*d.speed*dt; u.walk += dt;
+        const st0 = Math.floor(u.walk*9/Math.PI); u.x += dir*d.speed*dt; u.walk += dt;
+        if(rigOf(d) && Math.floor(u.walk*9/Math.PI) !== st0 && onScreen(u.x)) for(let k2=0;k2<3;k2++) addPart({type:"smoke", x:u.x + dir*(2+Math.random()*6), y:GY-1, vx:-dir*(8+Math.random()*14), vy:-4-Math.random()*8, life:0.45, max:0.55, r:2+Math.random()*1.6, c:"#6b5d4c"});
         if(ORG.has(d.visual) && Math.random() < dt*2.2 && onScreen(u.x)) addPart({type:"smoke", x:u.x - dir*3, y:GY-1, vx:-dir*6, vy:-6, life:0.5, max:0.6, r:2.4, c:"#5a4a3a"});
         if((d.visual==="tank"||d.visual==="jeep") && Math.random()<dt*4) puff(u.x - dir*d.w*0.5, GY-14, 1, "#6b7280", 5);
       }
@@ -711,7 +712,8 @@ function step(dt){
         if(d.proj){ fire(target, d, s, u.x + dir*d.w*0.55, GY - d.h*0.72, u); }
         else {
           if(target.base) damageBase(o, d.dmg*u.dm); else damageUnit(target, d.dmg*u.dm, s, u);
-          if(onScreen(u.x)){ sfx("melee",0.7); sparks(u.x + dir*(d.w/2+3), GY-d.h*0.6, 3, "#e5e7eb"); }
+          if(onScreen(u.x)){ if(rigOf(d)){ const ux = u.x; later(0.11, () => { sfx("melee",0.8); sparks(ux + dir*(d.w/2+6), GY-d.h*0.55, 7, "#fde68a"); addPart({type:"ring", x:ux + dir*(d.w/2+6), y:GY-d.h*0.55, vx:0, vy:0, life:0.16, max:0.16, r:16, c:"#fff4dc"}); if(!(G.hitStopCd>G.t)){ G.hitStop = 0.05; G.hitStopCd = G.t + 0.35; } G.shake = Math.min(5, G.shake + 1.2); }); }
+            else { sfx("melee",0.7); sparks(u.x + dir*(d.w/2+3), GY-d.h*0.6, 3, "#e5e7eb"); } }
         }
       }
     }
@@ -1455,10 +1457,15 @@ function drawUnit(u, s){
   ctx.fillStyle="rgba(0,0,0,.32)"; ell(0,1,d.w*0.58,3.8); ctx.fill();
   if(s.dir<0) ctx.scale(-1,1);
   if(u.hit>0) ctx.translate(-1.8*u.hit/0.1, 0);
+  if(rigOf(d)){ RIG_T = G.t + u.id*0.37;
+    drawUnitBody(d, FAC[d.fac].team, u.walk, u.atk, false, u.moving, u.lvl||0);
+    if(u.hit>0){ ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.5; drawUnitBody(d, FAC[d.fac].team, u.walk, u.atk, false, u.moving, u.lvl||0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+  } else {
   const [S, f] = unitFrame(u);
   ctx.drawImage(f, -S.ox/S.R, -S.oy/S.R, S.w/S.R, S.h/S.R);
   if(u.hit>0){ ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.55; ctx.drawImage(f, -S.ox/S.R, -S.oy/S.R, S.w/S.R, S.h/S.R); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
-  if(u.atk>0 && !d.proj && (d.visual==="foot" || d.visual==="mount")){
+  }
+  if(u.atk>0 && !d.proj && !rigOf(d) && (d.visual==="foot" || d.visual==="mount")){
     const p = 1 - u.atk/0.25, wpn = weaponOf(d);
     if(p>0.33 && p<0.62){ const q = (p-0.33)/0.29, sy = (d.visual==="mount" ? -51 : -35)*US, sx = 1.5*US;
       ctx.globalCompositeOperation = "lighter";
@@ -1502,11 +1509,14 @@ function drawUnitBody(d, team, walk, atk01, hit, moving, lvl=0){
   ctx.restore();
 }
 // ---- personnages illustrés découpés en pièces (cutout) ----
-const RIGS = {}; let RIG_PENDING = 0;
+const RIGS = {}; let RIG_PENDING = 0, RIG_T = 0;
+function rigShade(im, col, a){ const c = document.createElement("canvas"); c.width = im.width; c.height = im.height; const x = c.getContext("2d"); x.drawImage(im,0,0); x.globalCompositeOperation = "source-atop"; x.globalAlpha = a; x.fillStyle = col; x.fillRect(0,0,c.width,c.height); return c; }
 (function loadRigs(){ const D = window.RIGDATA || {};
   for(const key in D){ const r = D[key], img = {}; RIG_PENDING++;
     let left = Object.keys(r.parts).length;
-    for(const n in r.parts){ const im = new Image(); im.onload = () => { if(--left===0){ RIGS[key] = {...r, img}; RIG_PENDING--; SPR = {}; } }; im.src = r.parts[n].src; img[n] = im; } } })();
+    for(const n in r.parts){ const im = new Image();
+      im.onload = () => { if(--left===0){ for(const f of ["farThigh","farShin","farArm"]) if(img[f]) img[f+"_d"] = rigShade(img[f], "#05060a", 0.42); RIGS[key] = {...r, img, tint:{}}; RIG_PENDING--; SPR = {}; } };
+      im.src = r.parts[n].src; img[n] = im; } } })();
 function rigOf(d){ return d.boss ? null : RIGS[d.fac+d.era+"_"+d.k] || null; }
 const RIG_SWORD = {};
 function rigSword(len){ // épée longue réaliste, dessinée une fois
@@ -1519,34 +1529,66 @@ function rigSword(len){ // épée longue réaliste, dessinée une fois
   x.fillStyle = gg; x.beginPath(); x.roundRect(0.4,-4,1.3,8,0.5); x.fill(); x.stroke();
   x.fillStyle = "#2f241c"; x.fillRect(-6,-0.8,6.4,1.6); x.strokeStyle = "#120d0a"; x.lineWidth = 0.22; for(let i=-5.6;i<0.2;i+=0.8){ x.beginPath(); x.moveTo(i,-0.8); x.lineTo(i+0.6,0.8); x.stroke(); }
   const gp = x.createRadialGradient(-7,-0.4,0.1,-7,0,1.3); gp.addColorStop(0,"#c9ced6"); gp.addColorStop(1,"#3a3d44"); x.fillStyle = gp; x.beginPath(); x.arc(-7,0,1.15,0,Math.PI*2); x.fill(); x.stroke();
-  return RIG_SWORD[len] = {c, k, ox:9, oy:6};
+  // version « traînée » claire pour les coups
+  const gl = document.createElement("canvas"); gl.width = c.width; gl.height = c.height; const y = gl.getContext("2d"); y.drawImage(c,0,0); y.globalCompositeOperation = "source-atop"; y.fillStyle = "#fff4dc"; y.fillRect(0,0,gl.width,gl.height);
+  return RIG_SWORD[len] = {c, glow:gl, k, ox:9, oy:6};
 }
 const rigK = (K,p) => { let i=0; while(i<K.length-2 && p>K[i+1][0]) i++; const a=K[i], b=K[i+1], t=Math.min(1,Math.max(0,(p-a[0])/(b[0]-a[0]))), e=t*t*(3-2*t); return a[1]+(b[1]-a[1])*e; };
+// courbes d'attaque : préparation, frappe avec dépassement, tenue de l'impact, retour
+const RIG_SWING = { arm:[[0,0],[0.3,-2.8],[0.44,-0.4],[0.52,-0.55],[0.7,-0.5],[1,0]], sword:[[0,0.95],[0.3,0.25],[0.44,-0.05],[0.7,0.1],[1,0.95]],
+  lean:[[0,0],[0.3,-0.09],[0.44,0.17],[0.7,0.12],[1,0]], nT:[[0,0],[0.3,0.08],[0.44,-0.26],[0.7,-0.22],[1,0]], nS:[[0,0],[0.44,0.3],[0.7,0.26],[1,0]], fT:[[0,0],[0.44,0.2],[1,0]], head:[[0,0],[0.3,-0.1],[0.44,0.12],[1,0]], cloak:[[0,0],[0.3,0.08],[0.5,-0.14],[0.8,0.05],[1,0]] };
+const RIG_THRUST = { arm:[[0,0],[0.32,0.45],[0.46,-1.35],[0.7,-1.2],[1,0]], sword:[[0,0.95],[0.32,1.2],[0.46,1.45],[1,0.95]], lean:[[0,0],[0.32,-0.07],[0.46,0.16],[0.7,0.12],[1,0]],
+  nT:[[0,0],[0.46,-0.28],[0.7,-0.24],[1,0]], nS:[[0,0],[0.46,0.22],[1,0]], fT:[[0,0],[0.46,0.2],[1,0]], head:[[0,0],[0.46,0.06],[1,0]], cloak:[[0,0],[0.46,-0.1],[1,0]] };
+const RIG_SHOOT = { arm:[[0,0],[0.12,-0.16],[0.4,0.02],[1,0]], sword:[[0,0.95],[1,0.95]], lean:[[0,0],[0.12,-0.08],[0.4,0.01],[1,0]], nT:[[0,0],[1,0]], nS:[[0,0],[1,0]], fT:[[0,0],[1,0]], head:[[0,0],[0.12,-0.06],[0.4,0],[1,0]], cloak:[[0,0],[0.15,0.08],[1,0]] };
 function drawRig(d, r, team, walk, moving){
-  const pr = r.parts, I = r.img, ph = walk*9, mv = moving!==false, p = ATKP;
-  const P = {farThigh:0,farShin:0,nearThigh:0,nearShin:0,head:0,arm:0,cloak:0,bob:0,lean:0,sword:0.95};
-  if(mv && p<=0){ const sn = Math.sin(ph), cs = Math.cos(ph);
-    P.nearThigh = -0.36*sn; P.farThigh = 0.36*sn; P.nearShin = 0.75*Math.max(0,cs); P.farShin = 0.75*Math.max(0,-cs);
-    P.bob = -(1-Math.abs(cs))*r.H*0.008; P.arm = 0.12*sn; P.head = 0.03*Math.sin(ph*2); P.lean = 0.04; P.cloak = 0.06+0.05*Math.sin(ph+1); }
-  if(p>0){ P.arm = rigK([[0,0],[0.38,-2.75],[0.58,-0.7],[1,0]],p); P.lean = rigK([[0,0],[0.38,-0.06],[0.58,0.12],[1,0]],p);
-    P.sword = rigK([[0,0.95],[0.38,0.3],[0.58,0.15],[1,0.95]],p);
-    P.nearThigh = rigK([[0,0],[0.38,0.05],[0.58,-0.22],[1,0]],p); P.nearShin = rigK([[0,0],[0.58,0.25],[1,0]],p); P.farThigh = rigK([[0,0],[0.58,0.18],[1,0]],p);
-    P.head = rigK([[0,0],[0.38,-0.08],[0.58,0.1],[1,0]],p); P.cloak = rigK([[0,0],[0.58,-0.08],[1,0]],p); }
+  const pr = r.parts, I = r.img, ph = walk*9, mv = moving!==false, p = ATKP, tm = RIG_T;
+  const P = {farThigh:0,farShin:0,nearThigh:0,nearShin:0,head:0,arm:0,cloak:0,bob:0,lean:0,sword:0.95,wave:0};
+  const A = r.attack==="thrust" ? RIG_THRUST : r.attack==="shoot" ? RIG_SHOOT : RIG_SWING;
+  if(p>0){ for(const [k,n] of [["arm","arm"],["sword","sword"],["lean","lean"],["nearThigh","nT"],["nearShin","nS"],["farThigh","fT"],["head","head"],["cloak","cloak"]]) P[k] = rigK(A[n], p);
+    P.wave = Math.sin(p*9)*0.6; P.bob = rigK([[0,0],[0.3,-3],[0.44,3.5],[0.7,2.5],[1,0]],p); }
+  else if(mv){ const sn = Math.sin(ph), cs = Math.cos(ph), sn2 = Math.sin(ph*2);
+    P.nearThigh = -0.38*sn; P.farThigh = 0.38*sn;
+    P.nearShin = 0.8*Math.max(0,cs) + 0.08; P.farShin = 0.8*Math.max(0,-cs) + 0.08;   // genou qui plie au passage + léger fléchi permanent
+    P.bob = -(1-Math.abs(cs))*3.2 + 1.2; P.lean = 0.05 + 0.02*sn2; P.head = -0.025*sn2;          // la tête compense le roulis du buste
+    P.arm = 0.16*Math.sin(ph-0.35); P.cloak = 0.09 + 0.05*Math.sin(ph*2+1.1); P.wave = 1; }
+  else { const b = Math.sin(tm*2.3); P.bob = b*1.6; P.arm = 0.035*Math.sin(tm*2.3-0.7); P.head = 0.025*Math.sin(tm*2.3-1.1); P.cloak = 0.025*Math.sin(tm*1.6); P.wave = 0.25; P.nearShin = 0.04; P.farShin = 0.04; }
   const sc = 54/r.ground, hipX = r.W*0.51, hipY = r.H*0.575;
   const part = (n, rot) => { const q = pr[n]; ctx.translate(q.px,q.py); ctx.rotate(rot); ctx.translate(-q.px,-q.py); };
-  const img = n => ctx.drawImage(I[n], pr[n].x, pr[n].y);
+  const img = (n, alt) => ctx.drawImage(alt || I[n], pr[n].x, pr[n].y);
+  const body = () => { ctx.translate(hipX,hipY); ctx.rotate(P.lean); ctx.translate(-hipX,-hipY); };
   ctx.save(); ctx.scale(sc,sc); ctx.translate(-r.W*0.49, -r.ground + P.bob);
-  // cape (teintée aux couleurs du camp)
-  ctx.save(); ctx.translate(hipX,hipY); ctx.rotate(P.lean); ctx.translate(-hipX,-hipY); part("cloak", P.cloak); img("cloak");
-  ctx.globalCompositeOperation = "source-atop"; ctx.globalAlpha = 0.38; ctx.fillStyle = team; ctx.fillRect(pr.cloak.x, pr.cloak.y, I.cloak.width, I.cloak.height); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.restore();
-  const leg = (th, sh, dim) => { ctx.save(); if(dim) ctx.filter = "brightness(0.6)"; part(th, P[th]); img(th); part(sh, P[sh]); img(sh); ctx.restore(); };
+  // cape : découpée en bandes qui ondulent (mouvement secondaire), teintée aux couleurs du camp
+  if(pr.cloak){ ctx.save(); body(); part("cloak", P.cloak);
+    const tc = r.tint[team] || (r.tint[team] = rigShade(I.cloak, team, 0.38)), N = 10, bh = tc.height/N, q = pr.cloak;
+    for(let i=0;i<N;i++){ const f = i/(N-1), dx = -P.wave*f*f*(mv||p>0 ? 7 : 2.5)*(1 + 0.35*Math.sin((mv ? ph*2 : tm*1.6) + i*0.7)) + (mv ? -f*3 : 0);
+      ctx.drawImage(tc, 0, i*bh, tc.width, bh+1, q.x+dx, q.y+i*bh, tc.width, bh+1); }
+    ctx.restore(); }
+  const leg = (th, sh, far) => { if(!pr[th]) return; ctx.save(); part(th, P[th]); img(th, far && I[th+"_d"]); part(sh, P[sh]); img(sh, far && I[sh+"_d"]); ctx.restore(); };
   leg("farThigh","farShin",true); leg("nearThigh","nearShin",false);
-  ctx.save(); ctx.translate(hipX,hipY); ctx.rotate(P.lean); ctx.translate(-hipX,-hipY);
+  ctx.save(); body();
   img("torso");
-  ctx.save(); part("head", P.head); img("head"); ctx.restore();
-  ctx.save(); part("arm", P.arm);
-  const S = rigSword(30); ctx.save(); ctx.translate(r.hand[0], r.hand[1]); ctx.rotate(P.sword); ctx.scale(1/sc,1/sc); ctx.drawImage(S.c, -S.ox, -S.oy, S.c.width/S.k, S.c.height/S.k); ctx.restore();
-  img("arm"); ctx.restore();
+  if(pr.head){ ctx.save(); part("head", P.head - P.lean*0.4); img("head"); ctx.restore(); }
+  if(pr.arm){
+    const S = r.sword!==false ? rigSword(30) : null;
+    const drawSword = (armRot, swRot, glow, alpha) => { ctx.save(); part("arm", armRot); ctx.translate(r.hand[0], r.hand[1]); ctx.rotate(swRot); ctx.scale(1/sc,1/sc); ctx.globalAlpha = alpha; ctx.drawImage(glow ? S.glow : S.c, -S.ox, -S.oy, S.c.width/S.k, S.c.height/S.k); ctx.restore(); };
+    // croissant de vent qui suit la pointe de la lame
+    if(S && p>0.27 && p<0.66){ const q = pr.arm, L = 30/sc;
+      const pt = (pj, f) => { const ar = rigK(A.arm,pj), sw = rigK(A.sword,pj), hx = r.hand[0]-q.px, hy = r.hand[1]-q.py, ca = Math.cos(ar), sa = Math.sin(ar);
+        const X = q.px + hx*ca - hy*sa, Y = q.py + hx*sa + hy*ca, t = ar+sw; return [X + Math.cos(t)*L*f, Y + Math.sin(t)*L*f]; };
+      const n = 9, span = 0.17, fade = p>0.5 ? 1-(p-0.5)/0.16 : 1;
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      for(let j=0;j<n;j++){ const a0 = p - span*j/n, a1 = p - span*(j+1)/n; if(a1 < 0.26) break;
+        const o0 = pt(a0,1.06), o1 = pt(a1,1.06), i0 = pt(a0,0.5+0.3*j/n), i1 = pt(a1,0.5+0.3*(j+1)/n);
+        ctx.globalAlpha = 0.5*(1-j/n)*fade; ctx.fillStyle = j<2 ? "#ffffff" : "#ffe7b8";
+        ctx.beginPath(); ctx.moveTo(o0[0],o0[1]); ctx.lineTo(o1[0],o1[1]); ctx.lineTo(i1[0],i1[1]); ctx.lineTo(i0[0],i0[1]); ctx.closePath(); ctx.fill(); }
+      ctx.globalAlpha = 1; ctx.restore(); }
+    // traînée de lame pendant la frappe
+    if(S && p>0.28 && p<0.6){ ctx.save(); ctx.globalCompositeOperation = "lighter";
+      for(let j=1;j<=5;j++){ const pj = p - j*0.025; if(pj<=0.26) break; drawSword(rigK(A.arm,pj), rigK(A.sword,pj), true, 0.32*(1-j/6)); }
+      ctx.restore(); }
+    ctx.save(); part("arm", P.arm);
+    if(S){ ctx.save(); ctx.translate(r.hand[0], r.hand[1]); ctx.rotate(P.sword); ctx.scale(1/sc,1/sc); ctx.drawImage(S.c, -S.ox, -S.oy, S.c.width/S.k, S.c.height/S.k); ctx.restore(); }
+    img("arm"); ctx.restore(); }
   ctx.restore(); ctx.restore();
 }
 // ---- équipement gagné avec les niveaux ----
@@ -3208,7 +3250,7 @@ function loop(now){
     if(G.camVel){ G.cam += G.camVel*dt; G.camVel *= Math.pow(0.04, dt); if(Math.abs(G.camVel)<5) G.camVel=0; }
     if(G.demo){ const all=[...G.p.units,...G.e.units]; const c = all.length ? all.reduce((a,u)=>a+u.x,0)/all.length : W/2; G.camTarget = c - viewW/2; }
     if(G.camTarget!=null){ G.cam += (G.camTarget - G.cam)*Math.min(1, dt*(G.demo?1.2:8)); if(!G.demo && Math.abs(G.camTarget-G.cam)<1) G.camTarget=null; }
-    if(!G.paused && !G.over){ for(let i=0;i<G.speed;i++) step(dt); }
+    if(!G.paused && !G.over){ if(G.hitStop>0) G.hitStop -= dt; else for(let i=0;i<G.speed;i++) step(dt); }
     render();
     bakeTick(6);
     if(now-hudT>150 && !G.demo){ refreshHud(); hudT=now; }
