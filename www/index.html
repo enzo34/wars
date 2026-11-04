@@ -199,6 +199,7 @@
 <canvas id="intro" style="position:fixed;inset:0;width:100%;height:100%;z-index:60;background:#000;display:none"></canvas>
 <div id="rotate"><div><b>⟳</b>Tourne ton téléphone en mode paysage</div></div>
 
+<script src="sprites/rig_h2_0.js"></script>
 <script>
 "use strict";
 // compatibilité anciennes WebView
@@ -1419,7 +1420,7 @@ function sprite(d, lvl=0){
     const c2 = document.createElement("canvas"); c2.width = w; c2.height = h;
     const prev = ctx; ctx = trackCtx(c2.getContext("2d"));
     try{ ctx.translate(ox,oy); ctx.scale(Rr,Rr); drawUnitBody(d, team, walk, atk, false, moving, lvl); } finally { ctx = prev; }
-    return postFx(c2, th);
+    return rigOf(d) ? c2 : postFx(c2, th);
   };
   const per = Math.PI*2/9;
   const S = SPR[key] = {walkF:new Array(NW), atkF:new Array(NA), idle:null, w, h, ox, oy, R:Rr, jobs:[]};
@@ -1490,7 +1491,8 @@ function drawUnitBody(d, team, walk, atk01, hit, moving, lvl=0){
   if(lvl>=2){ const z = lvl>=4 ? 1.16 : 1.06; ctx.scale(z,z); }
   if(lvl>=4) drawLevelAura(d, team, walk);
   ctx.strokeStyle=OL; ctx.lineWidth=1.0; ctx.lineJoin="round"; ctx.lineCap="round";
-  if(v==="foot"||v==="flame") drawHuman(d, E, team, walk, hit, moving, false);
+  if(v==="foot" && rigOf(d)) drawRig(d, rigOf(d), team, walk, moving);
+  else if(v==="foot"||v==="flame") drawHuman(d, E, team, walk, hit, moving, false);
   else if(v==="mount") drawMount(d, E, team, sw, atk, hit, walk);
   else if(v==="beast") drawBeast(d, team, sw, atk, hit);
   else if(CREATURE_V.has(v)) drawCreature(d, team, walk, sw, atk, hit, moving);
@@ -1498,6 +1500,54 @@ function drawUnitBody(d, team, walk, atk01, hit, moving, lvl=0){
   else drawVehicle(d, team, walk, atk, hit);
   if(lvl>0) drawLevelGear(d, lvl, team, walk);
   ctx.restore();
+}
+// ---- personnages illustrés découpés en pièces (cutout) ----
+const RIGS = {}; let RIG_PENDING = 0;
+(function loadRigs(){ const D = window.RIGDATA || {};
+  for(const key in D){ const r = D[key], img = {}; RIG_PENDING++;
+    let left = Object.keys(r.parts).length;
+    for(const n in r.parts){ const im = new Image(); im.onload = () => { if(--left===0){ RIGS[key] = {...r, img}; RIG_PENDING--; SPR = {}; } }; im.src = r.parts[n].src; img[n] = im; } } })();
+function rigOf(d){ return d.boss ? null : RIGS[d.fac+d.era+"_"+d.k] || null; }
+const RIG_SWORD = {};
+function rigSword(len){ // épée longue réaliste, dessinée une fois
+  if(RIG_SWORD[len]) return RIG_SWORD[len];
+  const k = 6, c = document.createElement("canvas"); c.width = Math.ceil((len+12)*k); c.height = 12*k; const x = c.getContext("2d"); x.scale(k,k); x.translate(9,6);
+  const g = x.createLinearGradient(0,-1.4,0,1.4); g.addColorStop(0,"#eef1f4"); g.addColorStop(0.35,"#a9aeb6"); g.addColorStop(0.5,"#5d626b"); g.addColorStop(0.65,"#9298a1"); g.addColorStop(1,"#3c4047");
+  x.beginPath(); x.moveTo(1.6,-1.35); x.lineTo(len-5,-1.0); x.lineTo(len,0); x.lineTo(len-5,1.0); x.lineTo(1.6,1.35); x.closePath(); x.fillStyle = g; x.fill(); x.strokeStyle = "rgba(12,12,16,.85)"; x.lineWidth = 0.28; x.stroke();
+  x.strokeStyle = "rgba(30,32,38,.7)"; x.lineWidth = 0.35; x.beginPath(); x.moveTo(3,0); x.lineTo(len*0.62,0); x.stroke();
+  const gg = x.createLinearGradient(0,-4,0,4); gg.addColorStop(0,"#8a8f98"); gg.addColorStop(0.5,"#3a3d44"); gg.addColorStop(1,"#1c1e22");
+  x.fillStyle = gg; x.beginPath(); x.roundRect(0.4,-4,1.3,8,0.5); x.fill(); x.stroke();
+  x.fillStyle = "#2f241c"; x.fillRect(-6,-0.8,6.4,1.6); x.strokeStyle = "#120d0a"; x.lineWidth = 0.22; for(let i=-5.6;i<0.2;i+=0.8){ x.beginPath(); x.moveTo(i,-0.8); x.lineTo(i+0.6,0.8); x.stroke(); }
+  const gp = x.createRadialGradient(-7,-0.4,0.1,-7,0,1.3); gp.addColorStop(0,"#c9ced6"); gp.addColorStop(1,"#3a3d44"); x.fillStyle = gp; x.beginPath(); x.arc(-7,0,1.15,0,Math.PI*2); x.fill(); x.stroke();
+  return RIG_SWORD[len] = {c, k, ox:9, oy:6};
+}
+const rigK = (K,p) => { let i=0; while(i<K.length-2 && p>K[i+1][0]) i++; const a=K[i], b=K[i+1], t=Math.min(1,Math.max(0,(p-a[0])/(b[0]-a[0]))), e=t*t*(3-2*t); return a[1]+(b[1]-a[1])*e; };
+function drawRig(d, r, team, walk, moving){
+  const pr = r.parts, I = r.img, ph = walk*9, mv = moving!==false, p = ATKP;
+  const P = {farThigh:0,farShin:0,nearThigh:0,nearShin:0,head:0,arm:0,cloak:0,bob:0,lean:0,sword:0.95};
+  if(mv && p<=0){ const sn = Math.sin(ph), cs = Math.cos(ph);
+    P.nearThigh = -0.36*sn; P.farThigh = 0.36*sn; P.nearShin = 0.75*Math.max(0,cs); P.farShin = 0.75*Math.max(0,-cs);
+    P.bob = -(1-Math.abs(cs))*r.H*0.008; P.arm = 0.12*sn; P.head = 0.03*Math.sin(ph*2); P.lean = 0.04; P.cloak = 0.06+0.05*Math.sin(ph+1); }
+  if(p>0){ P.arm = rigK([[0,0],[0.38,-2.75],[0.58,-0.7],[1,0]],p); P.lean = rigK([[0,0],[0.38,-0.06],[0.58,0.12],[1,0]],p);
+    P.sword = rigK([[0,0.95],[0.38,0.3],[0.58,0.15],[1,0.95]],p);
+    P.nearThigh = rigK([[0,0],[0.38,0.05],[0.58,-0.22],[1,0]],p); P.nearShin = rigK([[0,0],[0.58,0.25],[1,0]],p); P.farThigh = rigK([[0,0],[0.58,0.18],[1,0]],p);
+    P.head = rigK([[0,0],[0.38,-0.08],[0.58,0.1],[1,0]],p); P.cloak = rigK([[0,0],[0.58,-0.08],[1,0]],p); }
+  const sc = 54/r.ground, hipX = r.W*0.51, hipY = r.H*0.575;
+  const part = (n, rot) => { const q = pr[n]; ctx.translate(q.px,q.py); ctx.rotate(rot); ctx.translate(-q.px,-q.py); };
+  const img = n => ctx.drawImage(I[n], pr[n].x, pr[n].y);
+  ctx.save(); ctx.scale(sc,sc); ctx.translate(-r.W*0.49, -r.ground + P.bob);
+  // cape (teintée aux couleurs du camp)
+  ctx.save(); ctx.translate(hipX,hipY); ctx.rotate(P.lean); ctx.translate(-hipX,-hipY); part("cloak", P.cloak); img("cloak");
+  ctx.globalCompositeOperation = "source-atop"; ctx.globalAlpha = 0.38; ctx.fillStyle = team; ctx.fillRect(pr.cloak.x, pr.cloak.y, I.cloak.width, I.cloak.height); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.restore();
+  const leg = (th, sh, dim) => { ctx.save(); if(dim) ctx.filter = "brightness(0.6)"; part(th, P[th]); img(th); part(sh, P[sh]); img(sh); ctx.restore(); };
+  leg("farThigh","farShin",true); leg("nearThigh","nearShin",false);
+  ctx.save(); ctx.translate(hipX,hipY); ctx.rotate(P.lean); ctx.translate(-hipX,-hipY);
+  img("torso");
+  ctx.save(); part("head", P.head); img("head"); ctx.restore();
+  ctx.save(); part("arm", P.arm);
+  const S = rigSword(30); ctx.save(); ctx.translate(r.hand[0], r.hand[1]); ctx.rotate(P.sword); ctx.scale(1/sc,1/sc); ctx.drawImage(S.c, -S.ox, -S.oy, S.c.width/S.k, S.c.height/S.k); ctx.restore();
+  img("arm"); ctx.restore();
+  ctx.restore(); ctx.restore();
 }
 // ---- équipement gagné avec les niveaux ----
 function lvlAnchors(d){
