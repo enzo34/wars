@@ -1498,7 +1498,7 @@ function drawUnitBody(d, team, walk, atk01, hit, moving, lvl=0){
   if(lvl>=2){ const z = lvl>=4 ? 1.16 : 1.06; ctx.scale(z,z); }
   if(lvl>=4) drawLevelAura(d, team, walk);
   ctx.strokeStyle=OL; ctx.lineWidth=1.0; ctx.lineJoin="round"; ctx.lineCap="round";
-  if(v==="foot" && rigOf(d)) drawRig(d, rigOf(d), team, walk, moving);
+  if(rigOf(d)) drawRig(d, rigOf(d), team, walk, moving);
   else if(v==="foot"||v==="flame") drawHuman(d, E, team, walk, hit, moving, false);
   else if(v==="mount") drawMount(d, E, team, sw, atk, hit, walk);
   else if(v==="beast") drawBeast(d, team, sw, atk, hit);
@@ -1553,7 +1553,7 @@ function drawRig(d, r, team, walk, moving){
     P.bob = -(1-Math.abs(cs))*3.2 + 1.2; P.lean = 0.05 + 0.02*sn2; P.head = -0.025*sn2;          // la tête compense le roulis du buste
     P.arm = 0.16*Math.sin(ph-0.35); P.cloak = 0.09 + 0.05*Math.sin(ph*2+1.1); P.wave = 1; }
   else { const b = Math.sin(tm*2.3); P.bob = b*1.6; P.arm = 0.035*Math.sin(tm*2.3-0.7); P.head = 0.025*Math.sin(tm*2.3-1.1); P.cloak = 0.025*Math.sin(tm*1.6); P.wave = 0.25; P.nearShin = 0.04; P.farShin = 0.04; }
-  const sc = 54/r.ground, hipX = r.W*0.51, hipY = r.H*0.575;
+  const hT = d.h/US*1.17, wT = d.w/US*(d.visual==="foot"||d.visual==="flame" ? 9 : 1.35), sc = Math.min(hT/r.ground, wT/r.W), hipX = r.W*0.51, hipY = r.H*0.575;
   const part = (n, rot) => { const q = pr[n]; ctx.translate(q.px,q.py); ctx.rotate(rot); ctx.translate(-q.px,-q.py); };
   const img = (n, alt) => ctx.drawImage(alt || I[n], pr[n].x, pr[n].y);
   const body = () => { ctx.translate(hipX,hipY); ctx.rotate(P.lean); ctx.translate(-hipX,-hipY); };
@@ -1564,7 +1564,7 @@ function drawRig(d, r, team, walk, moving){
     for(let i=0;i<N;i++){ const f = i/(N-1), dx = -P.wave*f*f*(mv||p>0 ? 7 : 2.5)*(1 + 0.35*Math.sin((mv ? ph*2 : tm*1.6) + i*0.7)) + (mv ? -f*3 : 0);
       ctx.drawImage(tc, 0, i*bh, tc.width, bh+1, q.x+dx, q.y+i*bh, tc.width, bh+1); }
     ctx.restore(); }
-  const leg = (th, sh, far) => { if(!pr[th]) return; ctx.save(); part(th, P[th]); img(th, far && I[th+"_d"]); part(sh, P[sh]); img(sh, far && I[sh+"_d"]); ctx.restore(); };
+  const leg = (th, sh, far) => { if(!pr[th]) return; ctx.save(); part(th, P[th]); img(th, far && I[th+"_d"]); if(pr[sh]){ part(sh, P[sh]); img(sh, far && I[sh+"_d"]); } ctx.restore(); };
   leg("farThigh","farShin",true); leg("nearThigh","nearShin",false);
   ctx.save(); body();
   img("torso");
