@@ -13,7 +13,7 @@ VERSION_CODE="${VERSION_CODE:-$(git -C "$ROOT" rev-list --count HEAD 2>/dev/null
 VERSION_NAME="1.0.$VERSION_CODE"
 ANDROID_ALL="14-robolectric-10818077"
 BT="$(ls -d /usr/lib/android-sdk/build-tools/*/ | tail -1)"
-DEST="${1:-$ROOT/../FrontsDuTemps.apk}"
+DEST="${1:-$ROOT/../Aeonfall.apk}"
 
 rm -rf "$OUT"; mkdir -p "$OUT/classes" "$OUT/gen" "$CACHE"
 ANDROID_JAR="${ANDROID_JAR:-$CACHE/android-all-$ANDROID_ALL.jar}"

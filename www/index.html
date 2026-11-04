@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0b0e14">
-<title>Fronts du Temps</title>
+<title>Æonfall — La Guerre des Âges</title>
 <style>
   :root{--glass:rgba(14,10,10,.9);--line:rgba(190,60,50,.22);--txt:#f1f5f9;--mut:#a3adbd;--gold:#fcd34d;--xp:#7dd3fc;--ok:#22c55e;--hot:#f97316;--b:clamp(46px,15vh,62px)}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -88,6 +88,53 @@
   #tip div{color:var(--mut)}
   /* écrans */
   #overlay{position:fixed;inset:0;display:grid;place-items:center;z-index:10;background:radial-gradient(ellipse at center,rgba(5,7,12,.35),rgba(5,7,12,.8));overflow:auto;padding:12px}
+  /* ---------- nouveau menu ---------- */
+  #overlay.ov-full{padding:0;place-items:stretch;background:linear-gradient(90deg,rgba(6,3,4,.92) 0%,rgba(6,3,4,.72) 46%,rgba(6,3,4,.35) 100%)}
+  .box.full{max-width:none;width:100%;height:100%;border-radius:0;border:none;background:transparent;box-shadow:none;padding:max(12px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));display:flex;flex-direction:column;text-align:left}
+  .logo{font-family:Georgia,'Times New Roman',serif;font-weight:900;font-size:clamp(34px,11vh,64px);letter-spacing:.12em;line-height:1;background:linear-gradient(180deg,#fff4ec,#e9b8a6 40%,#b4232a 72%,#4a0a0c);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px #9f123966) drop-shadow(0 3px 0 #000c)}
+  .tagl{font-family:Georgia,serif;color:#c9a27c;letter-spacing:.35em;text-transform:uppercase;font-size:clamp(10px,2.6vh,13px);margin-top:4px}
+  .home{flex:1;display:grid;grid-template-columns:minmax(260px,1fr) minmax(240px,1fr);gap:18px;min-height:0}
+  .homeL{display:flex;flex-direction:column;justify-content:center;gap:clamp(6px,1.8vh,12px)}
+  .cta{position:relative;display:flex;flex-direction:column;align-items:flex-start;padding:clamp(8px,2.6vh,14px) 20px;border-radius:14px;border:1px solid #f87171aa;background:linear-gradient(135deg,#b91c1c,#5a0a0e);font-family:Georgia,serif;font-weight:900;font-size:clamp(18px,5vh,26px);letter-spacing:.08em;color:#fff;box-shadow:0 0 0 0 #ef444466;animation:ctaP 2.2s infinite;text-align:left}
+  .cta small{font-family:system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:0;color:#fecaca;opacity:.9}
+  @keyframes ctaP{0%,100%{box-shadow:0 0 0 0 #ef444455}50%{box-shadow:0 0 0 10px #ef444400}}
+  .cta:active,.mbtn:active,.mcard:active,.rcard:active{transform:scale(.97)}
+  .mbtn{display:flex;align-items:center;gap:10px;padding:clamp(6px,1.8vh,10px) 14px;border-radius:12px;border:1px solid #ffffff22;background:linear-gradient(#2a1e1b,#160f0e);font-weight:700;font-size:14px;text-align:left}
+  .mbtn .ic{font-size:18px;width:22px;text-align:center}
+  .mbtn small{display:block;color:var(--mut);font-weight:500;font-size:11px}
+  .mrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .showcase{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:18px;background:radial-gradient(ellipse at 50% 60%,rgba(120,20,30,.35),rgba(0,0,0,0) 70%);min-height:0}
+  .showcase canvas{width:min(100%,300px);height:auto;aspect-ratio:4/3;max-height:52vh}
+  .showcase h2{margin:0;font-family:Georgia,serif;font-size:clamp(18px,5vh,26px);letter-spacing:.06em}
+  .showcase .traits{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:6px;max-width:340px}
+  .chip{padding:3px 9px;border-radius:999px;background:#ffffff10;border:1px solid #ffffff22;font-size:11px;color:#e7dcd5;font-weight:600}
+  .arrow{position:absolute;top:42%;width:38px;height:38px;border-radius:50%;border:1px solid #ffffff33;background:#00000088;font-size:18px;display:grid;place-items:center}
+  .arrow.l{left:0} .arrow.r{right:0}
+  .dots{display:flex;gap:6px;margin-top:6px} .dots i{width:7px;height:7px;border-radius:50%;background:#ffffff33} .dots i.on{background:#f87171}
+  .shead{display:flex;align-items:center;gap:12px;margin-bottom:clamp(6px,2vh,12px)}
+  .shead h2{margin:0;font-family:Georgia,serif;font-size:clamp(18px,5vh,26px);letter-spacing:.06em}
+  .back{width:40px;height:40px;border-radius:12px;border:1px solid #ffffff2a;background:#1e1614;font-size:18px;flex:none}
+  .mgrid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:10px;min-height:0}
+  .mcard{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:16px;border:1px solid #ffffff1e;background:linear-gradient(170deg,#2c1f1c,#120c0b);text-align:left;position:relative;overflow:hidden}
+  .mcard .e{font-size:clamp(22px,7vh,34px)} .mcard b{font-family:Georgia,serif;font-size:clamp(14px,4vh,18px)} .mcard p{margin:0;color:var(--mut);font-size:11.5px;font-weight:500;line-height:1.3;flex:1}
+  .mcard .rec{font-size:11px;color:#fbbf24;font-weight:700}
+  .mcard.hot{border-color:#ef4444aa;background:linear-gradient(170deg,#3a1a18,#160b0a)}
+  .setup{flex:1;display:flex;flex-direction:column;gap:clamp(6px,1.8vh,12px);min-height:0}
+  .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--mut);font-weight:700;margin-bottom:4px}
+  .rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .rcard{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;border:2px solid #ffffff18;background:#1a1311;text-align:left}
+  .rcard canvas{width:56px;height:42px;flex:none}
+  .rcard b{display:block;font-family:Georgia,serif;font-size:14px} .rcard small{color:var(--mut);font-size:10.5px;font-weight:500}
+  .rcard.on{border-color:#ef4444;background:linear-gradient(#3a1a18,#1a0d0b);box-shadow:0 0 16px #7f1d1d77}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{padding:7px 14px;border-radius:10px;border:1px solid #ffffff26;background:#1e1614;font-weight:700;font-size:13px}
+  .seg button.on{background:linear-gradient(#b91c1c,#6a0f10);border-color:#f87171}
+  .seg button:disabled{opacity:.3}
+  .launch{margin-top:auto;display:flex;gap:10px;align-items:center}
+  .launch .cta{flex:1;align-items:center;animation:none}
+  .info{flex:1;color:var(--mut);font-size:12px}
+  @media (max-height:420px){ .mcard p{font-size:10.5px} .rcard canvas{width:44px;height:33px} }
+  @media (max-width:640px) and (orientation:portrait){ .home{grid-template-columns:1fr} .mgrid{grid-template-columns:repeat(2,1fr)} .rgrid{grid-template-columns:repeat(2,1fr)} }
   .box{border-radius:18px;padding:18px 22px;max-width:560px;width:100%;text-align:center;box-shadow:0 0 50px rgba(34,197,94,.12),inset 0 0 40px rgba(134,239,172,.05)}
   .runes{color:#b4533c99;letter-spacing:.6em;font-size:14px;margin-bottom:2px;text-shadow:0 0 8px #7f1d1d}
   .title{margin:0;font-family:Georgia,'Times New Roman',serif;font-size:clamp(30px,7.5vh,50px);font-weight:900;letter-spacing:.08em;background:linear-gradient(180deg,#f3e9dc,#b9a48c 45%,#7a1c14 75%,#3a0a08);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 14px #7f1d1d88) drop-shadow(0 3px 0 #000a)}
@@ -3085,70 +3132,145 @@ function loop(now){
     if(now-hudT>150 && !G.demo){ refreshHud(); hudT=now; }
   }
 }
-function showOverlay(html){ $("ovbox").innerHTML=html; $("overlay").style.display="grid"; }
+let MENU_ANIM = 0;
+function showOverlay(html, cls){ MENU_ANIM++; $("ovbox").className = "box glass" + (cls ? " "+cls : ""); $("overlay").className = cls ? "ov-"+cls : ""; $("ovbox").innerHTML=html; $("overlay").style.display="grid"; }
 function hideOverlay(){ $("overlay").style.display="none"; }
 function setHud(v){ if(!v) $("bossbar").style.display = "none"; for(const id of ["top","bot","mini","rival"]) $(id).style.visibility = v?"visible":"hidden"; }
-function menuHeader(){ return `<div class="runes">ᛟ ✶ ᚦ ✶ ᛉ</div><h1 class="title">FRONTS DU TEMPS</h1>`; }
-function startMenu(){
-  newGame("normal", true); setHud(false);
-  let best = null; try{ best = JSON.parse(localStorage.getItem("fdt_best")||"null"); }catch(e){}
-  const dm = dailyToday();
-  showOverlay(`${menuHeader()}
-  <p class="sub"><i>…sous le regard de ce qui rêve entre les étoiles.</i></p>
-  <div class="facs">${Object.entries(FAC).map(([k,f])=>`<button class="fac ${pickFac===k?"on":""}" id="fac_${k}" onclick="pickF('${k}')"><span class="ico"></span><b>${f.name}</b><small>${f.desc}</small></button>`).join("")}</div>
-  <div class="qrow">Adversaire : ${["rand",...Object.keys(FAC)].map(k=>`<button class="qbtn opp ${pickOpp===k?"on":""}" data-o="${k}" ${k===pickFac?"disabled":""} onclick="pickO('${k}')">${k==="rand"?"🎲 Au hasard":FAC[k].name}</button>`).join("")}</div>
-  <div class="modes">
-    <button class="mode" onclick="menuDiff('conquest')"><span class="e">⚔</span><b>Conquête</b><small>Détruis la base adverse</small></button>
-    <button class="mode" onclick="menuCampaign()"><span class="e">📜</span><b>Campagne</b><small>8 missions, une par époque</small></button>
-    <button class="mode" onclick="menuSurvival()"><span class="e">🌀</span><b>Survie</b><small>Vagues sans fin et reliques</small></button>
-    <button class="mode" onclick="menuDiff('siege')"><span class="e">🏰</span><b>Siège</b><small>Tiens 15 minutes</small></button>
-    <button class="mode" onclick="menuDiff('daily')"><span class="e">🎲</span><b>Défi du jour</b><small>${dm.name}</small></button>
-  </div>
-  ${qualityRow()}
-  ${best?`<div class="best">★ Meilleure conquête : victoire en ${DIFF[best.d].label} en ${fmtTime(best.t)}</div>`:""}
-  <details><summary>Comment jouer</summary><ul>
-    <li><b>Or</b> : produis des unités (en bas à gauche) et des tourelles (en bas à droite). Tuer des ennemis rapporte de l'or.</li>
-    <li><b>XP ★</b> : quand la barre est pleine, <b>Évoluer</b> passe à l'époque suivante, soigne ta base et invoque le <b>boss</b> de l'époque.</li>
-    <li><b>Niveaux</b> : chaque unité monte de niveau en tuant (2, 5, 9, 14 victimes).</li>
-    <li><b>Attaque spéciale</b> (bouton rond) : dévastatrice, recharge ${SPECIAL_CD} s.</li>
-    <li>Production : 2 s (mêlée), 3 s (distance), 6 s (9 s à l'époque 7), 12 s (20 s dès l'époque 5). File de 5 unités.</li>
-    <li>Glisse sur l'écran ou touche la mini-carte pour te déplacer. Appui long sur un bouton = détails.</li>
-  </ul></details>`);
-  for(const [k,f] of Object.entries(FAC)) $("fac_"+k).querySelector(".ico").appendChild(unitIcon(UD(f.icon[0],f.icon[1],k), f.team));
+// ======================= MENUS =======================
+const TRAITS = {
+  h:["Fusils, chars et artillerie","Tourelles mécaniques","Le Chevalier Noir, le Titan d'Acier…"],
+  c:["Horreurs tentaculaires","Bile et rayons d'énergie","Le Shoggoth, le Grand Ancien…"],
+  v:["Sang lancé à distance","Gargouilles et chauves-souris","La Comtesse, le Prince des Ténèbres…"],
+  w:["Meute rapide et féroce","Wendigos aux âges tardifs","La Bête du Gévaudan, le Dévoreur…"],
+};
+const MODES = {
+  conquest:{e:"⚔", name:"Conquête", desc:"Détruis la base adverse en traversant les 8 époques. Chaque évolution invoque un boss."},
+  campaign:{e:"📜", name:"Campagne", desc:"8 missions, une par époque, gardées par un boss. Jusqu'à 3 étoiles chacune."},
+  survival:{e:"🌀", name:"Survie", desc:"Des vagues sans fin et un boss toutes les 5 vagues. Les reliques débloquent des bonus."},
+  siege:{e:"🏰", name:"Siège", desc:"Ta forteresse renforcée doit tenir 15 minutes face à un ennemi sans limite."},
+  daily:{e:"🎲", name:"Défi du jour", desc:""},
+};
+let lastCfg = loadJSON("fdt_last", {mode:"conquest", diff:"normal"});
+function menuHeader(){ return `<div class="logo">ÆONFALL</div>`; }
+// aperçu animé d'une unité (cycle de marche)
+function animPreview(canvas, d, team){
+  const id = ++MENU_ANIM, S = spriteFull(d), x = canvas.getContext("2d");
+  const W2 = canvas.width, H2 = canvas.height; let f = 0;
+  const tick = () => { if(id !== MENU_ANIM || !canvas.isConnected) return;
+    x.clearRect(0,0,W2,H2); f = (f+1) % (NW*3);
+    const fr = S.walkF[Math.floor(f/3)] || S.idle, sc = Math.min(W2*0.86/(fr.width), H2*0.86/(fr.height));
+    x.fillStyle = "rgba(0,0,0,.45)"; x.beginPath(); x.ellipse(W2/2, H2*0.9, W2*0.22, H2*0.04, 0, 0, Math.PI*2); x.fill();
+    x.drawImage(fr, W2/2 - S.ox*sc, H2*0.9 - S.oy*sc, fr.width*sc, fr.height*sc);
+    setTimeout(()=>requestAnimationFrame(tick), 55); };
+  tick();
 }
-function menuDiff(mode){
-  const info = {conquest:["⚔ CONQUÊTE","Détruis la base adverse en traversant les 8 époques. Chaque évolution invoque le boss de l'époque."],
-    siege:["🏰 SIÈGE","Ta forteresse commence avec 4 emplacements et deux fois plus de PV. Tiens 15 minutes face à un ennemi qui s'enrichit sans cesse. Sa base est imprenable."],
-    daily:["🎲 DÉFI DU JOUR", "<b>"+dailyToday().name+"</b> : "+dailyToday().desc+((()=>{ const b = loadJSON("fdt_daily_"+Math.floor(Date.now()/86400000), 0); return b ? "<br>★ Ton meilleur temps aujourd'hui : "+fmtTime(b) : ""; })())]}[mode];
-  showOverlay(`<h1 class="title">${info[0]}</h1><p class="sub">${info[1]}</p>
-  <div class="row"><button class="big g" onclick="go('facile',{mode:'${mode}'})">Facile</button><button class="big o" onclick="go('normal',{mode:'${mode}'})">Normal</button><button class="big r" onclick="go('difficile',{mode:'${mode}'})">Difficile</button></div>
-  <div class="row"><button class="big" onclick="startMenu()">← Retour</button></div>`);
+function recordFor(mode){
+  if(mode==="conquest"){ const b = loadJSON("fdt_best", null); return b ? `★ Victoire ${DIFF[b.d].label} en ${fmtTime(b.t)}` : "Aucune victoire"; }
+  if(mode==="campaign"){ const st = loadJSON("fdt_camp_"+pickFac, []); const n = st.reduce((a,v)=>a+(v||0),0); return `★ ${n} / 24 étoiles`; }
+  if(mode==="survival"){ return `Record : vague ${loadJSON("fdt_surv",0)} · ◆ ${relics()}`; }
+  if(mode==="siege"){ return "Tenir 15:00"; }
+  if(mode==="daily"){ const b = loadJSON("fdt_daily_"+Math.floor(Date.now()/86400000), 0); return b ? "★ Aujourd'hui : "+fmtTime(b) : "Pas encore relevé"; }
+  return "";
+}
+function startMenu(){
+  if(!G || !G.demo){ newGame("normal", true); }
+  setHud(false);
+  const f = FAC[pickFac], M = MODES[lastCfg.mode] || MODES.conquest;
+  const keys = Object.keys(FAC), idx = keys.indexOf(pickFac);
+  showOverlay(`<div class="home">
+    <div class="homeL">
+      <div>${menuHeader()}<div class="tagl">La Guerre des Âges</div></div>
+      <button class="cta" onclick="menuModes()">▶ JOUER<small>Choisis un mode de jeu</small></button>
+      <button class="mbtn" onclick="quickPlay()"><span class="ic">⚡</span><span>Partie rapide<small>${M.name} · ${f.name} · ${lastCfg.mode==="campaign"||lastCfg.mode==="survival" ? "" : DIFF[lastCfg.diff].label}</small></span></button>
+      <div class="mrow"><button class="mbtn" onclick="menuSettings()"><span class="ic">⚙</span>Paramètres</button><button class="mbtn" onclick="menuHelp()"><span class="ic">❔</span>Comment jouer</button></div>
+    </div>
+    <div class="showcase">
+      <button class="arrow l" onclick="pickF('${keys[(idx+keys.length-1)%keys.length]}')">◀</button>
+      <canvas id="hero" width="400" height="300"></canvas>
+      <h2 style="color:${f.light}">${f.name}</h2>
+      <div class="traits">${TRAITS[pickFac].map(t=>`<span class="chip">${t}</span>`).join("")}</div>
+      <div class="dots">${keys.map(k=>`<i class="${k===pickFac?"on":""}"></i>`).join("")}</div>
+      <button class="arrow r" onclick="pickF('${keys[(idx+1)%keys.length]}')">▶</button>
+    </div>
+  </div>`, "full");
+  animPreview($("hero"), UD(f.icon[0], f.icon[1], pickFac), f.team);
+}
+function quickPlay(){ const c = lastCfg; if(c.mode==="campaign") return menuCampaign(); go(c.diff||"normal", {mode:c.mode}); }
+function menuModes(){
+  const dm = dailyToday();
+  showOverlay(`<div class="shead"><button class="back" onclick="startMenu()">←</button><h2>Modes de jeu</h2></div>
+  <div class="mgrid">${Object.entries(MODES).map(([k,m])=>`<button class="mcard ${k===lastCfg.mode?"hot":""}" onclick="${k==="campaign"?"menuCampaign()":k==="survival"?"menuSurvival()":`menuSetup('${k}')`}">
+    <span class="e">${m.e}</span><b>${m.name}</b><p>${k==="daily" ? "<b style='font-size:12px;color:#fde68a'>"+dm.name+"</b> · "+dm.desc : m.desc}</p><span class="rec">${recordFor(k)}</span></button>`).join("")}</div>`, "full");
+}
+function raceCards(){ return `<div><div class="lbl">Ta race</div><div class="rgrid">${Object.entries(FAC).map(([k,f])=>`<button class="rcard ${k===pickFac?"on":""}" onclick="pickF('${k}', true)"><canvas width="112" height="84" data-f="${k}"></canvas><span><b style="color:${f.light}">${f.name}</b><small>${f.desc}</small></span></button>`).join("")}</div></div>`; }
+function fillRaceIcons(){ document.querySelectorAll(".rcard canvas").forEach(c=>{ const k = c.dataset.f, f = FAC[k], ic = unitIcon(UD(f.icon[0],f.icon[1],k), f.team); c.getContext("2d").drawImage(ic, 0, 0, c.width, c.height); }); }
+function oppRow(){ return `<div><div class="lbl">Adversaire</div><div class="seg">${["rand",...Object.keys(FAC)].map(k=>`<button class="opp ${pickOpp===k?"on":""}" data-o="${k}" ${k===pickFac?"disabled":""} onclick="pickO('${k}')">${k==="rand"?"🎲 Au hasard":FAC[k].name}</button>`).join("")}</div></div>`; }
+let setupMode = "conquest", setupDiff = lastCfg.diff || "normal";
+function menuSetup(mode){
+  setupMode = mode || setupMode; const m = MODES[setupMode], dm = dailyToday();
+  showOverlay(`<div class="shead"><button class="back" onclick="menuModes()">←</button><h2>${m.e} ${m.name}</h2></div>
+  <div class="setup">${raceCards()}${oppRow()}
+    <div><div class="lbl">Difficulté</div><div class="seg">${["facile","normal","difficile"].map(d=>`<button class="dif ${setupDiff===d?"on":""}" onclick="setupDiff='${d}';document.querySelectorAll('.dif').forEach(b=>b.classList.toggle('on',b.textContent==='${DIFF[d].label}'))">${DIFF[d].label}</button>`).join("")}</div></div>
+    <div class="launch"><div class="info">${setupMode==="daily" ? "<b style='color:#fde68a'>"+dm.name+"</b> : "+dm.desc : m.desc}</div><button class="cta" onclick="go(setupDiff,{mode:'${setupMode}'})">LANCER ⚔</button></div>
+  </div>`, "full");
+  fillRaceIcons();
 }
 function menuCampaign(){
   const st = loadJSON("fdt_camp_"+pickFac, []);
   let h = "";
   for(let i=0;i<8;i++){ const open = i===0 || (st[i-1]||0) > 0, n = st[i]||0;
     h += `<button class="mis" ${open?"":"disabled"} onclick="go('normal',{mode:'campaign',mission:${i}})"><b>${i+1}. ${MISSIONS[i].t}</b><span>${ERAS[i].name}</span><br><span class="st">${"★".repeat(n)}${"☆".repeat(3-n)}</span></button>`; }
-  showOverlay(`<h1 class="title">📜 CAMPAGNE</h1><p class="sub">${FAC[pickFac].name} · époque verrouillée, un gardien protège chaque base ennemie.</p>
-  <div class="mlist">${h}</div><div class="row"><button class="big" onclick="startMenu()">← Retour</button></div>`);
+  showOverlay(`<div class="shead"><button class="back" onclick="menuModes()">←</button><h2>📜 Campagne</h2><span class="info" style="text-align:right">${recordFor("campaign")}</span></div>
+  <div class="setup">${raceCards()}<div class="mlist" style="margin-top:0">${h}</div>
+  <div class="info">L'époque est verrouillée pendant la mission. Un boss garde la base ennemie quand elle tombe sous 60 % de vie. Tes étoiles sont propres à chaque race.</div></div>`, "full");
+  fillRaceIcons();
 }
 function menuSurvival(){
   const U = upg(), R2 = relics();
   let h = "";
   for(const u of UPG){ const l = U[u.id]||0, c = u.cost(l), maxed = l >= u.max;
     h += `<button class="up" ${maxed || R2 < c ? "disabled" : ""} onclick="buyUpg('${u.id}')"><b>${u.name} <span class="lv">${l}/${u.max}</span></b>${u.desc}<br>${maxed ? "max" : "◆ "+c+" reliques"}</button>`; }
-  showOverlay(`<h1 class="title">🌀 SURVIE</h1><p class="sub">Les vagues de la Faille s'intensifient, un boss toutes les 5 vagues.<br>Record : vague <b>${loadJSON("fdt_surv",0)}</b> · Reliques : <b style="color:var(--gold)">◆ ${R2}</b> (bonus valables uniquement en Survie)</p>
-  <div class="upg">${h}</div>
-  <div class="row"><button class="big g" onclick="go('normal',{mode:'survival'})">Entrer dans la Faille</button><button class="big" onclick="startMenu()">← Retour</button></div>`);
+  showOverlay(`<div class="shead"><button class="back" onclick="menuModes()">←</button><h2>🌀 Survie</h2><span class="info" style="text-align:right">Record : vague <b>${loadJSON("fdt_surv",0)}</b> · <b style="color:var(--gold)">◆ ${R2} reliques</b></span></div>
+  <div class="setup">${raceCards()}
+    <div><div class="lbl">Sanctuaire · bonus permanents (Survie uniquement)</div><div class="upg" style="margin-top:0">${h}</div></div>
+    <div class="launch"><div class="info">Des vagues toutes les 40 s, l'ennemi change d'époque toutes les 2 à 3 vagues, un boss toutes les 5 vagues.</div><button class="cta" onclick="go('normal',{mode:'survival'})">ENTRER DANS LA FAILLE</button></div>
+  </div>`, "full");
+  fillRaceIcons();
 }
 function buyUpg(id){ const U = upg(), u = UPG.find(x=>x.id===id), l = U[id]||0, c = u.cost(l); if(l>=u.max || relics()<c) return; saveJSON("fdt_relics", relics()-c); U[id] = l+1; saveJSON("fdt_upg", U); sfx("build"); menuSurvival(); }
+function menuSettings(){
+  const intro = loadJSON("fdt_intro", true);
+  showOverlay(`<div class="shead"><button class="back" onclick="startMenu()">←</button><h2>⚙ Paramètres</h2></div>
+  <div class="setup">
+    <div><div class="lbl">Graphismes</div><div class="seg">${Object.entries(QMODES).map(([k,v])=>`<button class="qbtn ${k===QMODE?"on":""}" data-q="${k}" onclick="setQuality('${k}')">${v.label}</button>`).join("")}</div>
+      <div class="info" style="margin-top:4px">Économie : 30 images/s, idéal pour la batterie · Haute : 60 images/s, halo lumineux</div></div>
+    <div><div class="lbl">Son</div><div class="seg"><button class="snd ${SFX.on?"on":""}" onclick="setSound(true)">Activé</button><button class="snd ${!SFX.on?"on":""}" onclick="setSound(false)">Coupé</button></div></div>
+    <div><div class="lbl">Intro Rubyx Studio au démarrage</div><div class="seg"><button class="itr ${intro?"on":""}" onclick="saveJSON('fdt_intro',true);menuSettings()">Oui</button><button class="itr ${!intro?"on":""}" onclick="saveJSON('fdt_intro',false);menuSettings()">Non</button></div></div>
+  </div>`, "full");
+}
+function setSound(on){ SFX.on = on; $("sound").textContent = on?"🔊":"🔇"; try{ localStorage.setItem("fdt_mute", on?"0":"1"); }catch(e){} if(on){ audio(); sfx("click"); } menuSettings(); }
+function menuHelp(){
+  showOverlay(`<div class="shead"><button class="back" onclick="startMenu()">←</button><h2>❔ Comment jouer</h2></div>
+  <div class="setup" style="overflow:auto"><div class="mlist" style="grid-template-columns:repeat(3,1fr);margin-top:0">
+    <div class="mis"><b>● Or</b>Produis des unités (en bas à gauche) et des tourelles (en bas à droite). Chaque ennemi tué rapporte de l'or.</div>
+    <div class="mis"><b>★ Évolution</b>Barre d'XP pleine : Évoluer passe à l'époque suivante, soigne ta base et invoque le boss de l'époque.</div>
+    <div class="mis"><b>⬆ Niveaux</b>Chaque unité monte de niveau en tuant (2, 5, 9, 14 victimes) et change d'apparence.</div>
+    <div class="mis"><b>☄ Attaque spéciale</b>Le bouton rond : dévastatrice, recharge ${SPECIAL_CD} s.</div>
+    <div class="mis"><b>⏱ Production</b>2 s, 3 s, 6 s (9 s à l'époque 7), 12 s (20 s dès l'époque 5). File de 5 unités.</div>
+    <div class="mis"><b>👆 Contrôles</b>Glisse pour te déplacer, touche la mini-carte, appui long sur un bouton = détails, retour = pause.</div>
+  </div></div>`, "full");
+}
 let pickFac = "h";
 try{ const f = localStorage.getItem("fdt_fac"); pickFac = FAC[f] ? f : "h"; }catch(e){}
 let pickOpp = "rand";
 try{ pickOpp = localStorage.getItem("fdt_opp") || "rand"; if(pickOpp!=="rand" && !FAC[pickOpp]) pickOpp = "rand"; }catch(e){}
-function pickF(f){ pickFac = f; try{ localStorage.setItem("fdt_fac", f); }catch(e){} if(pickOpp===f) pickOpp = "rand"; sfx("click"); startMenu(); }
+function pickF(f, inSetup){ pickFac = f; try{ localStorage.setItem("fdt_fac", f); }catch(e){} if(pickOpp===f) pickOpp = "rand"; sfx("click");
+  if(!inSetup) return startMenu();
+  document.querySelectorAll(".rcard").forEach(b=>b.classList.toggle("on", b.querySelector("canvas").dataset.f===f));
+  document.querySelectorAll(".opp").forEach(b=>{ b.disabled = b.dataset.o===f; b.classList.toggle("on", b.dataset.o===pickOpp); });
+  const ov = $("ovbox"); if(ov.querySelector(".mlist .mis") && ov.textContent.includes("Campagne")) menuCampaign(); }
 function pickO(o){ pickOpp = o; try{ localStorage.setItem("fdt_opp", o); }catch(e){} document.querySelectorAll(".opp").forEach(b=>b.classList.toggle("on", b.dataset.o===o)); sfx("click"); }
-function go(d, opts){ hideOverlay(); newGame(d, false, pickFac, Object.assign({opp: pickOpp==="rand" ? null : pickOpp}, opts||{})); setHud(true); resize(); G.cam=0; last=performance.now(); sfx("click"); }
+function go(d, opts){ lastCfg = {mode:(opts&&opts.mode)||"conquest", diff:d}; saveJSON("fdt_last", lastCfg); hideOverlay(); newGame(d, false, pickFac, Object.assign({opp: pickOpp==="rand" ? null : pickOpp}, opts||{})); setHud(true); resize(); G.cam=0; last=performance.now(); sfx("click"); }
 // ======================= INTRO « RUBYX STUDIO » =======================
 function playIntro(done){
   const c = $("intro"), x = c.getContext("2d"); c.style.display = "block";
@@ -3252,7 +3374,7 @@ function playIntro(done){
   requestAnimationFrame(frame);
 }
 resize(); startMenu(); requestAnimationFrame(loop);
-if(!location.hash.includes("nointro")) playIntro(()=>{});
+if(!location.hash.includes("nointro") && loadJSON("fdt_intro", true)) playIntro(()=>{});
 </script>
 </body>
 </html>

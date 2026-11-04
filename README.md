@@ -1,19 +1,19 @@
-# Fronts du Temps
+# Æonfall — La Guerre des Âges
 
-Tower defense évolutif en side-scroll, de la Préhistoire à l'ère moderne : Humains contre Créatures.
+Tower defense évolutif en side-scroll, de la Préhistoire à l'ère moderne : Humains, Créatures, Vampires et Loups-garous. Un jeu Rubyx Studio.
 Jeu HTML5/Canvas en un seul fichier (`www/index.html`), empaqueté en application **Android**.
 
 ## Installer sur Android
 1. Sur ton téléphone, télécharge l'APK :
-   **https://github.com/enzo34/wars/raw/ccr-2b79d7df-9zvfgl/FrontsDuTemps.apk**
+   **https://github.com/enzo34/wars/raw/ccr-2b79d7df-9zvfgl/Aeonfall.apk**
 2. Ouvre le fichier et autorise « Installer des applis inconnues » si Android le demande.
-3. Lance **Fronts du Temps** (plein écran, paysage, hors ligne).
+3. Lance **Æonfall** (plein écran, paysage, hors ligne).
 
 ### Recompiler l'APK
 Sans Android Studio ni SDK Google (Ubuntu/Debian) :
 ```
 sudo apt install aapt apksigner zipalign dalvik-exchange openjdk-17-jdk
-android/build-apk.sh            # produit FrontsDuTemps.apk à la racine
+android/build-apk.sh            # produit Aeonfall.apk à la racine
 ```
 Le framework Android vient de Maven Central (Robolectric `android-all`).
 La clé de signature est lue dans `$FDT_KEYSTORE` / `$FDT_KS_PASS`, sinon une clé locale est générée
