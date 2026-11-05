@@ -221,6 +221,7 @@
 
 <script src="sprites/rigs.js"></script>
 <script src="sprites/bg.js"></script>
+<script src="sprites/turrets.js"></script>
 <script>
 "use strict";
 // compatibilité anciennes WebView
@@ -1470,7 +1471,16 @@ function drawBaseTurrets(s){
     if(G.sellMode && s===G.p){ ctx.strokeStyle="#f97316"; ctx.lineWidth=2.5; rr(p.x-22,p.y-20,44,30,6); ctx.stroke(); }
   }
 }
+// tourelles illustrées : une image par tourelle (humains : par ère ; autres races : primitive / avancée)
+const TURIMG = {};
+(function(){ const D = window.TURDATA || {}; for(const k in D){ const im = new Image(); im.onload = () => { TURIMG[k] = {img:im, w:D[k].w, h:D[k].h}; }; im.src = D[k].src; } })();
+function turImg(d){ const f = d.fac || "h"; return TURIMG[f==="h" ? "h"+d.era+"_"+d.k : f+(d.era<4?0:1)+"_"+d.k]; }
 function drawTurretBody(d, team, ang, recoil=0){
+  const ti = turImg(d);
+  if(ti){ const sc = Math.min(36/ti.h, 52/ti.w) * (1 + d.k*0.06), a = Math.max(-0.7, Math.min(0.9, ang))*0.2;
+    ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(0, 6, ti.w*sc*0.42, 3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.save(); ctx.translate(-recoil*3, 6); ctx.rotate(a); ctx.drawImage(ti.img, -ti.w*sc/2, -ti.h*sc, ti.w*sc, ti.h*sc); ctx.restore();
+    ctx.fillStyle = team; ctx.globalAlpha = 0.85; ctx.fillRect(-12, 6, 24, 2.5); ctx.globalAlpha = 1; return; }
   if(d.fac==="c") return drawCreatureTurret(d, team, ang, recoil);
   if(d.fac==="v") return drawVampTurret(d, team, ang, recoil);
   if(d.fac==="w") return drawWolfTurret(d, team, ang, recoil);
