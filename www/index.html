@@ -1491,7 +1491,7 @@ function baseImg(s){ return BASEIMG[s.fac==="h" || !s.fac ? "h"+s.era : s.fac+(s
 function turImg(d){ const f = d.fac || "h"; return TURIMG[f==="h" ? "h"+d.era+"_"+d.k : f+(d.era<4?0:1)+"_"+d.k]; }
 function drawTurretBody(d, team, ang, recoil=0){
   const ti = turImg(d);
-  if(ti){ const sc = Math.min(36/ti.h, 52/ti.w) * (1 + d.k*0.06), a = Math.max(-0.7, Math.min(0.9, ang))*0.2;
+  if(ti){ const sc = Math.min(46/ti.h, 64/ti.w) * (1 + d.k*0.05), a = Math.max(-0.7, Math.min(0.9, ang))*0.2;
     ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(0, 6, ti.w*sc*0.42, 3, 0, 0, Math.PI*2); ctx.fill();
     ctx.save(); ctx.translate(-recoil*3, 6); ctx.rotate(a); ctx.drawImage(ti.img, -ti.w*sc/2, -ti.h*sc, ti.w*sc, ti.h*sc); ctx.restore();
     ctx.fillStyle = team; ctx.globalAlpha = 0.85; ctx.fillRect(-12, 6, 24, 2.5); ctx.globalAlpha = 1; return; }
