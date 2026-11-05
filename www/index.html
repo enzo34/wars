@@ -1295,7 +1295,9 @@ function drawDecor(e){
   for(let i=0;i<16;i++){
     const wx = 300 + i*135 + hash(i*5.1)*70;
     if(wx < G.cam-80 || wx > G.cam+viewW+80 || wx > W-300) continue;
-    const pk = "e"+e+"_"+(Math.floor(hash(i*9.7+e)*3)), pi = PROPIMG[pk];
+    const p0 = Math.floor(hash(i*9.7+e)*3); let pk = null;
+    for(let j=0;j<3;j++){ const q = "e"+e+"_"+((p0+j)%3); if(PROPIMG[q]){ pk = q; break; } }
+    const pi = pk && PROPIMG[pk];
     if(pi){ const hT = [92,44,58][+pk.slice(-1)]*(0.8+hash(i*2.2)*0.45), sc = Math.min(hT/pi.h, 120/pi.w), fl = hash(i*3.3) < 0.5;
       ctx.save(); ctx.translate(wx, GY+3); if(fl) ctx.scale(-1,1); ctx.drawImage(pi.img, -pi.w*sc/2, -pi.h*sc, pi.w*sc, pi.h*sc); ctx.restore(); continue; }
     const S = decorSprite(e, i);
