@@ -818,6 +818,7 @@ function step(dt){
   }
   if(G.mode==="siege" && !G.over && G.t >= G.siegeDur) endGame(true);
   if(G.mode==="campaign" && !G.guardian && G.e.hp < G.e.maxHp*0.6){ G.guardian = true; spawnBoss(G.e); }
+  if(G.p.assist && G.p.assist.special && G.p.specialCd<=0 && !G.over) useSpecial(G.p);   // auto-attaque : lancée dès qu'elle est prête
   for(const s of [G.p,G.e]) if(s.auto || s.assist){ s.think-=dt; if(s.think<=0){ s.think=0.8*(s===G.e?G.diff.think:1); ai(s); } }
 }
 const AUTO_ALL = {evolve:true, special:true, turrets:true, units:true};
