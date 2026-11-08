@@ -134,6 +134,9 @@
   .seg{display:flex;gap:6px;flex-wrap:wrap}
   .seg button{padding:7px 14px;border-radius:10px;border:1px solid #ffffff26;background:#1e1614;font-weight:700;font-size:13px}
   .seg button.on{background:#9e2f3c;border-color:#ede3cc}
+  .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+  @media (max-width:560px){.sgrid{grid-template-columns:1fr}}
+  .seg button{font-size:12px;padding:6px 11px}
   .seg button:disabled{opacity:.3}
   .launch{margin-top:auto;display:flex;gap:10px;align-items:center}
   .launch .cta{flex:1;align-items:center;animation:none}
@@ -186,6 +189,10 @@
   .arrow{background:rgba(12,10,8,.75);border-color:rgba(214,196,160,.35);border-radius:4px}
   .dots i.on{background:#b4232c}
   .mcard .e,.mbtn .ic,.mode .e,.ibtn,#special span{filter:grayscale(1) sepia(.55) brightness(.95) contrast(1.15)}
+  .big{background:linear-gradient(180deg,#25201b,#15110e 70%,#0f0c0a)!important;border:1px solid rgba(214,196,160,.3)!important;border-radius:4px!important;box-shadow:inset 0 0 0 1px #000,2px 3px 0 rgba(0,0,0,.55)}
+  .big.g,.big.o,.big.r{background:linear-gradient(180deg,#8a2228,#5a1218 70%,#3d0b10)!important;border-color:#d6c4a0!important}
+  .seg button{border-radius:4px!important;background:linear-gradient(180deg,#25201b,#15110e)!important;border:1px solid rgba(214,196,160,.26)!important}
+  .seg button.on{background:linear-gradient(180deg,#8a2228,#5a1218)!important;border-color:#d6c4a0!important}
   .box:not(.full){background:linear-gradient(180deg,#201b17,#100d0b)!important;border:1px solid rgba(214,196,160,.3)!important;border-radius:5px!important}
 </style>
 </head>
@@ -488,7 +495,10 @@ function newGame(diff, demo=false, fac="h", opts={}){
     G.p.goldMul = 1 + 0.1*(U.gold||0); G.p.xpMul = 1 + 0.08*(U.xp||0); G.p.specMul = 1 - 0.08*(U.spec||0);
     G.p.gold += 150*(U.start||0); G.p.maxHp = Math.round(G.p.maxHp*(1+0.1*(U.hp||0))); G.p.hp = G.p.maxHp; G.p.hpMul = 1+0.1*(U.hp||0);
     if(U.tower) G.p.turrets[0] = {def:TD(0,1,G.p.fac), cdT:0, ang:0, recoil:0};
-    G.e.slots = 0; }
+    G.e.slots = 0;
+    const C = survCfg(); G.p.assist = {evolve:C.evolve, special:C.special, turrets:C.turrets, units:C.units}; G.p.think = 0.5;
+    G.waveGap = C.pace; G.waveT = Math.min(15, C.pace); G.waveMul = SURV_DIFF[C.diff].mul; G.relicMul = SURV_DIFF[C.diff].relic; G.p.gold += C.gold;
+    G.speed = C.speed; }
   if(M==="siege"){ G.p.slots = 4; G.p.maxHp = Math.round(G.p.maxHp*1.6); G.p.hp = G.p.maxHp; G.p.hpMul = 1.6; G.p.gold = 400; }
   if(M==="campaign"){ if(!(G.mission>=0 && G.mission<8)) G.mission = 0; const i = G.mission; G.noEvolve = true;
     for(const sd of [G.p, G.e]){ sd.era = i; sd.maxHp = baseMaxHp(i); sd.hp = sd.maxHp; sd.gold = Math.round(260*costMul(i)); sd.xp = i ? XP_REQ[i-1] : 0; }
@@ -798,9 +808,9 @@ function step(dt){
   if(G.events && G.events.length){ const due = G.events.filter(ev=>ev.t<=G.t); G.events = G.events.filter(ev=>ev.t>G.t); for(const ev of due) if(!G.over) ev.fn(); }
   if(G.mode==="survival" && !G.demo){
     G.waveT -= dt;
-    if(G.waveT <= 0){ G.wave++; G.waveT = 40;
+    if(G.waveT <= 0){ G.wave++; G.waveT = G.waveGap || 40;
       const e = G.e, era = Math.min(7, Math.floor((G.wave-1)/2.4)); if(era > e.era){ e.era = era; prebake(e); }
-      const n = 4 + Math.floor(G.wave*1.8), w3 = Math.min(0.3, 0.05 + G.wave*0.015);
+      const n = Math.round((4 + Math.floor(G.wave*1.8)) * (G.waveMul || 1)), w3 = Math.min(0.3, 0.05 + G.wave*0.015);
       G.waveLvl = Math.min(4, Math.floor(G.wave/5));
       for(let i=0;i<n;i++){ const r = Math.random(), k = r < w3 ? 3 : r < w3+0.2 ? 2 : r < w3+0.52 ? 1 : 0; e.queue.push(Object.assign({}, UD(e.era,k,e.fac), {time:0.45})); }
       if(G.wave % 5 === 0) later(2.5, ()=>spawnBoss(G.e));
@@ -808,13 +818,14 @@ function step(dt){
   }
   if(G.mode==="siege" && !G.over && G.t >= G.siegeDur) endGame(true);
   if(G.mode==="campaign" && !G.guardian && G.e.hp < G.e.maxHp*0.6){ G.guardian = true; spawnBoss(G.e); }
-  for(const s of [G.p,G.e]) if(s.auto){ s.think-=dt; if(s.think<=0){ s.think=0.8*(s===G.e?G.diff.think:1); ai(s); } }
+  for(const s of [G.p,G.e]) if(s.auto || s.assist){ s.think-=dt; if(s.think<=0){ s.think=0.8*(s===G.e?G.diff.think:1); ai(s); } }
 }
+const AUTO_ALL = {evolve:true, special:true, turrets:true, units:true};
 function ai(s){
-  const o = opp(s);
-  if(canEvolve(s)) evolve(s);
+  const o = opp(s), A = s.auto ? AUTO_ALL : (s.assist || {});
+  if(A.evolve && canEvolve(s)) evolve(s);
   const threat = o.units.filter(u => Math.abs(u.x - s.front) < 900).length;
-  if(s.specialCd<=0 && (threat>=5 || (threat>=2 && s.hp < s.maxHp*0.5))) useSpecial(s);
+  if(A.special && s.specialCd<=0 && (threat>=5 || (threat>=2 && s.hp < s.maxHp*0.5))) useSpecial(s);
 
   // ---- production adaptative : selon l'or, l'XP et l'armée qui arrive en face ----
   const val = u => u.def.cost * (u.hp/(u.maxHp||u.def.hp)) * (1 + (u.lvl||0)*0.3);
@@ -847,7 +858,8 @@ function ai(s){
   const defGoal = Math.min(4, 1 + Math.floor(G.t/75) + (underAttack ? 1 : 0) + (skill>=1 ? 1 : 0));
   const bestTurret = budget => { for(let k=3;k>=0;k--){ if(TD(s.era,k,s.fac).cost <= budget) return k; } return -1; };
   let defBusy = false;
-  if(G.mode==="siege" && s===G.e){ /* base imprenable : tout pour l'attaque */ }
+  if(!A.turrets){ /* tourelles gérées par le joueur */ }
+  else if(G.mode==="siege" && s===G.e){ /* base imprenable : tout pour l'attaque */ }
   else if(freeSlot >= 0 && nTur < defGoal){
     // en danger : la meilleure tourelle payable tout de suite ; sinon on garde un peu d'or pour les unités
     const budget = underAttack ? s.gold : s.gold - (s.units.length < 2 ? UD(s.era,0,s.fac).cost*2 : 0);
@@ -859,16 +871,16 @@ function ai(s){
     else defBusy = !underAttack && s.gold > SLOT_COST[s.slots]*0.5;   // économise pour l'emplacement
   }
   // améliorer : remplacer la plus faible tourelle (époque passée ou petit modèle) dès que possible
-  if(!nearEvo || underAttack){
+  if(A.turrets && (!nearEvo || underAttack)){
     let wi = -1, ws = Infinity;
     for(let i=0;i<s.slots;i++){ const t = s.turrets[i]; if(!t) continue; const sc = t.def.era*4 + t.def.k; if(sc < ws){ ws = sc; wi = i; } }
     if(wi >= 0){ const t = s.turrets[wi], refund = Math.round(t.def.cost/2), k = bestTurret(s.gold + refund - (underAttack ? 0 : planCost*0.5));
       if(k >= 0 && (s.era*4 + k) > ws + 1 && freeSlot < 0){ sellTurret(s, wi); buyTurret(s, k); } }
   }
-  if(underAttack && s.specialCd<=0 && o.units.filter(u => Math.abs(u.x - s.front) < 700).length >= 2) useSpecial(s);
+  if(A.special && underAttack && s.specialCd<=0 && o.units.filter(u => Math.abs(u.x - s.front) < 700).length >= 2) useSpecial(s);
   const reserveDef = defBusy;
   let guard = 0;
-  while(s.queue.length < want && guard++ < 5 && !(reserveDef && !danger)){
+  while(A.units && s.queue.length < want && guard++ < 5 && !(reserveDef && !danger)){
     if(s.gold >= planCost){ queueUnit(s, s.aiPlan); s.aiPlan = pick(); continue; }
     if(danger || ratio > 1.3 || (s.units.length===0 && s.queue.length===0)){
       let k = ratio > 1.3 && nR/nT > 0.5 ? 0 : Math.min(s.aiPlan, 1);
@@ -884,7 +896,7 @@ function endGame(won){
   sfx(won?"evolve":"lose");
   const again = `go('${G.diffKey}', ${JSON.stringify({mode:G.mode, mission:G.mission}).replace(/"/g,"&quot;")})`;
   if(G.mode==="survival"){
-    const gain = Math.max(0, G.wave-1) + G.bossKills*2, best = loadJSON("fdt_surv", 0);
+    const gain = Math.round((Math.max(0, G.wave-1) + G.bossKills*2) * (G.relicMul || 1)), best = loadJSON("fdt_surv", 0);
     saveJSON("fdt_relics", relics() + gain); if(G.wave > best) saveJSON("fdt_surv", G.wave);
     showOverlay(`<h1 class="title">LA FAILLE T'A ENGLOUTI</h1><p class="sub">Vague atteinte : <b>${G.wave}</b> ${G.wave>best?"· nouveau record !":"· record "+best} · boss vaincus : ${G.bossKills}<br>Reliques gagnées : <b style="color:var(--gold)">+${gain}</b> (total ${relics()})</p>
       <div class="row"><button class="big g" onclick="${again}">Rejouer</button><button class="big o" onclick="menuSurvival()">Sanctuaire</button><button class="big" onclick="startMenu()">Menu</button></div>`); return; }
@@ -3389,7 +3401,7 @@ function togglePause(force){
   G.paused = force!==undefined ? force : !G.paused;
   $("pause").textContent = G.paused?"▶":"❚❚";
   if(G.paused) showOverlay(`<h1 class="title">PAUSE</h1><p class="sub">${ERAS[G.p.era].name} · ${fmtTime(G.t)} · ${G.diff.label}</p>
-    <div class="row"><button class="big g" onclick="togglePause(false)">Reprendre</button><button class="big" onclick="startMenu()">Quitter</button></div>${qualityRow()}`);
+    <div class="row"><button class="big g" onclick="togglePause(false)">Reprendre</button><button class="big" onclick="startMenu()">Quitter</button></div>${G.mode==="survival" && G.p.assist ? `<div style="margin-top:10px"><div class="lbl">Automatismes</div>${survAutoRow(G.p.assist)}</div>` : ""}${qualityRow()}`);
   else hideOverlay();
 }
 // bouton retour Android (appelé par l'application)
@@ -3530,11 +3542,32 @@ function menuSurvival(){
   for(const u of UPG){ const l = U[u.id]||0, c = u.cost(l), maxed = l >= u.max;
     h += `<button class="up" ${maxed || R2 < c ? "disabled" : ""} onclick="buyUpg('${u.id}')"><b>${u.name} <span class="lv">${l}/${u.max}</span></b>${u.desc}<br>${maxed ? "max" : "◆ "+c+" reliques"}</button>`; }
   showOverlay(`<div class="shead"><button class="back" onclick="menuModes()">←</button><h2>🌀 Survie</h2><span class="info" style="text-align:right">Record : vague <b>${loadJSON("fdt_surv",0)}</b> · <b style="color:var(--gold)">◆ ${R2} reliques</b></span></div>
-  <div class="setup">${raceCards()}
+  <div class="setup" style="overflow-y:auto">${raceCards()}
+    ${survSettings(survCfg())}
     <div><div class="lbl">Sanctuaire · bonus permanents (Survie uniquement)</div><div class="upg" style="margin-top:0">${h}</div></div>
-    <div class="launch"><div class="info">Des vagues toutes les 40 s, l'ennemi change d'époque toutes les 2 à 3 vagues, un boss toutes les 5 vagues.</div><button class="cta" onclick="go('normal',{mode:'survival'})">ENTRER DANS LA FAILLE</button></div>
+    <div class="launch"><div class="info">Des vagues toutes les 40 s, l'ennemi change d'époque toutes les 2 à 3 vagues, un boss toutes les 5 vagues.</div><button class="cta" onclick="go(survCfg().diff==='cauchemar'?'difficile':survCfg().diff,{mode:'survival'})">ENTRER DANS LA FAILLE</button></div>
   </div>`, "full");
   fillRaceIcons();
+}
+// réglages de la partie de Survie (mémorisés)
+const SURV_DIFF = {facile:{label:"Facile", mul:0.7, relic:0.5}, normal:{label:"Normal", mul:1, relic:1}, difficile:{label:"Difficile", mul:1.35, relic:1.5}, cauchemar:{label:"Cauchemar", mul:1.8, relic:2.2}};
+const SURV_DEF = {evolve:false, special:false, turrets:false, units:false, diff:"normal", pace:40, speed:1, gold:0};
+function survCfg(){ return Object.assign({}, SURV_DEF, loadJSON("fdt_survcfg", {})); }
+function setSurv(k, v){ const C = survCfg(); C[k] = v; saveJSON("fdt_survcfg", C); sfx("click"); if(G && G.mode==="survival" && !G.demo && G.p.assist && k in G.p.assist && G.paused){ G.p.assist[k] = v; togglePause(true); } else menuSurvival(); }
+function survAutoRow(C){
+  const T = [["evolve","⏫","Évolution"],["special","☄","Attaque spéciale"],["turrets","🗼","Tourelles"],["units","⚔","Recrutement"]];
+  return `<div class="seg">${T.map(([k,ic,n])=>`<button class="${C[k]?"on":""}" onclick="setSurv('${k}',${!C[k]})">${ic} Auto ${n} : ${C[k]?"oui":"non"}</button>`).join("")}</div>`;
+}
+function survSettings(C){
+  const opt = (k, list) => `<div class="seg">${list.map(([v,l])=>`<button class="${C[k]===v?"on":""}" onclick="setSurv('${k}',${JSON.stringify(v).replace(/"/g,"&quot;")})">${l}</button>`).join("")}</div>`;
+  return `<div><div class="lbl">Automatismes</div>${survAutoRow(C)}</div>
+    <div class="sgrid">
+      <div><div class="lbl">Difficulté des vagues</div>${opt("diff", Object.entries(SURV_DIFF).map(([k,v])=>[k,v.label]))}</div>
+      <div><div class="lbl">Rythme des vagues</div>${opt("pace", [[25,"Rapide · 25 s"],[40,"Normal · 40 s"],[60,"Lent · 60 s"]])}</div>
+      <div><div class="lbl">Vitesse de jeu</div>${opt("speed", [[1,"x1"],[2,"x2"],[3,"x3"]])}</div>
+      <div><div class="lbl">Or de départ</div>${opt("gold", [[0,"Normal"],[500,"+500"],[1500,"+1 500"]])}</div>
+    </div>
+    <div class="info">Reliques gagnées : ×${SURV_DIFF[C.diff].relic} selon la difficulté.</div>`;
 }
 function buyUpg(id){ const U = upg(), u = UPG.find(x=>x.id===id), l = U[id]||0, c = u.cost(l); if(l>=u.max || relics()<c) return; saveJSON("fdt_relics", relics()-c); U[id] = l+1; saveJSON("fdt_upg", U); sfx("build"); menuSurvival(); }
 function menuSettings(){
@@ -3571,7 +3604,7 @@ function pickF(f, inSetup){ pickFac = f; try{ localStorage.setItem("fdt_fac", f)
   document.querySelectorAll(".opp").forEach(b=>{ b.disabled = b.dataset.o===f; b.classList.toggle("on", b.dataset.o===pickOpp); });
   const ov = $("ovbox"); if(ov.querySelector(".mlist .mis") && ov.textContent.includes("Campagne")) menuCampaign(); }
 function pickO(o){ pickOpp = o; try{ localStorage.setItem("fdt_opp", o); }catch(e){} document.querySelectorAll(".opp").forEach(b=>b.classList.toggle("on", b.dataset.o===o)); sfx("click"); }
-function go(d, opts){ lastCfg = {mode:(opts&&opts.mode)||"conquest", diff:d}; saveJSON("fdt_last", lastCfg); hideOverlay(); newGame(d, false, pickFac, Object.assign({opp: pickOpp==="rand" ? null : pickOpp}, opts||{})); setHud(true); resize(); G.cam=0; last=performance.now(); sfx("click"); }
+function go(d, opts){ lastCfg = {mode:(opts&&opts.mode)||"conquest", diff:d}; saveJSON("fdt_last", lastCfg); hideOverlay(); newGame(d, false, pickFac, Object.assign({opp: pickOpp==="rand" ? null : pickOpp}, opts||{})); setHud(true); $("speed").textContent = "x"+G.speed; resize(); G.cam=0; last=performance.now(); sfx("click"); }
 // ======================= INTRO « RUBYX STUDIO » =======================
 function playIntro(done){
   const c = $("intro"), x = c.getContext("2d"); c.style.display = "block";
@@ -3589,9 +3622,46 @@ function playIntro(done){
                  [[0,-1,0],[[-1,-1,1],[-1,-1,-1],[1,-1,-1],[1,-1,1]]],[[0,0,1],[[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]]],[[0,0,-1],[[1,-1,-1],[-1,-1,-1],[-1,1,-1],[1,1,-1]]]];
   const rotY = (p, a) => [p[0]*Math.cos(a)+p[2]*Math.sin(a), p[1], -p[0]*Math.sin(a)+p[2]*Math.cos(a)];
   const rotX = (p, a) => [p[0], p[1]*Math.cos(a)-p[2]*Math.sin(a), p[1]*Math.sin(a)+p[2]*Math.cos(a)];
-  function drawCube(cx, cy, S, yaw, twist, assemble, glow){
+  const RB = cubies.find(cb => cb.i===1 && cb.j===1 && cb.k===1); RB.d = 0;
+  const proj = (p2, yaw, tw, cx, cy, S) => { p2 = rotY(p2, tw); p2 = rotY(p2, yaw); p2 = rotX(p2, -0.55); const pz = 1/(1 - p2[2]*0.06); return [cx + p2[0]*S*pz, cy - p2[1]*S*pz, p2[2]]; };
+  const rubyCol = (l, glint) => `rgb(${Math.min(255, Math.round(150 + 105*l + glint*60))},${Math.min(255, Math.round(10 + 40*l*l + glint*120))},${Math.min(255, Math.round(35 + 45*l + glint*110))})`;
+  function drawPolys(polys){
+    polys.sort((a,b)=>a.depth-b.depth);
+    for(const P of polys){
+      x.globalAlpha = Math.min(1, P.a*1.5);
+      x.fillStyle = "#120406"; x.beginPath(); P.pts.forEach((p2,i)=> i?x.lineTo(p2[0],p2[1]):x.moveTo(p2[0],p2[1])); x.closePath(); x.fill();
+      const cxp = P.pts.reduce((a,p2)=>a+p2[0],0)/4, cyp = P.pts.reduce((a,p2)=>a+p2[1],0)/4, ins = 0.8;
+      const l = Math.max(0.2, Math.min(1.15, P.lum));
+      if(P.ruby){ // pièce rubis : facettes taillées, reflets
+        const g = x.createLinearGradient(P.pts[0][0], P.pts[0][1], P.pts[2][0], P.pts[2][1]);
+        g.addColorStop(0, rubyCol(l, 0.5+P.glint)); g.addColorStop(0.5, rubyCol(l*0.75, P.glint*0.4)); g.addColorStop(1, rubyCol(l*0.45, 0));
+        x.fillStyle = g; x.beginPath(); P.pts.forEach((p2,i)=>{ const px = cxp+(p2[0]-cxp)*ins, py = cyp+(p2[1]-cyp)*ins; i?x.lineTo(px,py):x.moveTo(px,py); }); x.closePath(); x.fill();
+        x.strokeStyle = `rgba(255,200,215,${0.35+0.4*P.glint})`; x.lineWidth = Math.max(1, (P.pts[1][0]-P.pts[0][0])*0.02 + 1);
+        x.beginPath(); for(let k=0;k<4;k++){ const p2 = P.pts[k]; x.moveTo(cxp+(p2[0]-cxp)*ins, cyp+(p2[1]-cyp)*ins); x.lineTo(cxp+(p2[0]-cxp)*0.35, cyp+(p2[1]-cyp)*0.35); } x.stroke();
+        x.fillStyle = `rgba(255,235,240,${0.25+0.5*P.glint})`; x.beginPath(); for(let k=0;k<4;k++){ const p2 = P.pts[k]; const px = cxp+(p2[0]-cxp)*0.35, py = cyp+(p2[1]-cyp)*0.35; k?x.lineTo(px,py):x.moveTo(px,py); } x.closePath(); x.fill();
+        continue; }
+      const r = Math.round(58*l + P.glow*170), g = Math.round(44*l + P.glow*20), b = Math.round(52*l + P.glow*40);   // cube d'obsidienne : le rubis ressort
+      x.fillStyle = `rgb(${Math.min(255,r)},${Math.min(255,g)},${Math.min(255,b)})`;
+      x.beginPath(); P.pts.forEach((p2,i)=>{ const px = cxp+(p2[0]-cxp)*ins, py = cyp+(p2[1]-cyp)*ins; i?x.lineTo(px,py):x.moveTo(px,py); }); x.closePath(); x.fill();
+      x.fillStyle = "rgba(255,255,255,.18)"; x.beginPath(); const a0 = P.pts[0], a1 = P.pts[1]; x.moveTo(cxp+(a0[0]-cxp)*ins, cyp+(a0[1]-cyp)*ins); x.lineTo(cxp+(a1[0]-cxp)*ins, cyp+(a1[1]-cyp)*ins); x.lineTo(cxp, cyp); x.closePath(); x.fill();
+    }
+    x.globalAlpha = 1;
+  }
+  // une pièce seule (le rubis avant qu'il ne s'enclenche), centrée à l'écran en (px,py)
+  function drawPiece(px, py, S, yaw, roll, glint){
+    const polys = [];
+    for(const [n, quad] of FACES){
+      let nn = rotX(rotY(n, roll), 0); nn = rotY(nn, yaw); nn = rotX(nn, -0.55);
+      if(nn[2] <= 0.02) continue;
+      const pts = quad.map(v => { let p2 = rotX(rotY([v[0]*0.47, v[1]*0.47, v[2]*0.47], roll), 0); p2 = rotY(p2, yaw); p2 = rotX(p2, -0.55); const pz = 1/(1 - p2[2]*0.06); return [px + p2[0]*S*pz, py - p2[1]*S*pz, p2[2]]; });
+      polys.push({pts, depth: pts.reduce((a,p2)=>a+p2[2],0)/4, lum: 0.6 + nn[1]*0.35 + nn[0]*0.15, a: 1, ruby: true, glint});
+    }
+    drawPolys(polys);
+  }
+  function drawCube(cx, cy, S, yaw, twist, assemble, glow, rubyIn, glint){
     const polys = [];
     for(const cb of cubies){
+      if(cb===RB && !rubyIn) continue;
       const q = ez((assemble - cb.d)/(1-cb.d));
       const base = [cb.i + cb.sx*(1-q), cb.j + cb.sy*(1-q), cb.k + cb.sz*(1-q)];
       const tw = cb.j===1 ? twist : 0;
@@ -3600,20 +3670,10 @@ function playIntro(done){
         if(nn[2] <= 0.02) continue;
         const pts = quad.map(v => { let p2 = [base[0]+v[0]*0.47, base[1]+v[1]*0.47, base[2]+v[2]*0.47]; p2 = rotY(p2, tw); p2 = rotY(p2, yaw); p2 = rotX(p2, -0.55); const pz = 1/(1 - p2[2]*0.06); return [cx + p2[0]*S*pz, cy - p2[1]*S*pz, p2[2]]; });
         const depth = pts.reduce((a,p2)=>a+p2[2],0)/4;
-        polys.push({pts, depth, lum: 0.55 + nn[1]*0.35 + nn[0]*0.12, a: q});
+        polys.push({pts, depth, lum: 0.55 + nn[1]*0.35 + nn[0]*0.12, a: q, glow, ruby: cb===RB, glint: glint||0});
       }
     }
-    polys.sort((a,b)=>a.depth-b.depth);
-    for(const P of polys){
-      x.globalAlpha = Math.min(1, P.a*1.5);
-      x.fillStyle = "#120406"; x.beginPath(); P.pts.forEach((p2,i)=> i?x.lineTo(p2[0],p2[1]):x.moveTo(p2[0],p2[1])); x.closePath(); x.fill();
-      const cxp = P.pts.reduce((a,p2)=>a+p2[0],0)/4, cyp = P.pts.reduce((a,p2)=>a+p2[1],0)/4, ins = 0.8;
-      const l = Math.max(0.2, Math.min(1.15, P.lum)), r = Math.round(200*l + glow*55), g = Math.round(18*l + glow*40), b = Math.round(40*l + glow*50);
-      x.fillStyle = `rgb(${Math.min(255,r)},${Math.min(255,g)},${Math.min(255,b)})`;
-      x.beginPath(); P.pts.forEach((p2,i)=>{ const px = cxp+(p2[0]-cxp)*ins, py = cyp+(p2[1]-cyp)*ins; i?x.lineTo(px,py):x.moveTo(px,py); }); x.closePath(); x.fill();
-      x.fillStyle = "rgba(255,255,255,.18)"; x.beginPath(); const a0 = P.pts[0], a1 = P.pts[1]; x.moveTo(cxp+(a0[0]-cxp)*ins, cyp+(a0[1]-cyp)*ins); x.lineTo(cxp+(a1[0]-cxp)*ins, cyp+(a1[1]-cyp)*ins); x.lineTo(cxp, cyp); x.closePath(); x.fill();
-    }
-    x.globalAlpha = 1;
+    drawPolys(polys);
   }
   function drawRuby(px, py, r, rot, alpha){
     x.save(); x.translate(px, py); x.rotate(rot); x.globalAlpha = alpha;
@@ -3642,17 +3702,22 @@ function playIntro(done){
       const i = Math.min(nh-1, Math.floor(t/hopT)), f = Math.min(1, t/hopT - i), a = path[i], b = path[i+1];
       const px = cx + (a[0]+(b[0]-a[0])*f)*U, py = cy + (a[1]+(b[1]-a[1])*f)*U*0.6 + U*8 - Math.sin(f*Math.PI)*U*9;
       x.fillStyle = "rgba(0,0,0,.45)"; x.beginPath(); x.ellipse(cx+(a[0]+(b[0]-a[0])*f)*U, cy+(a[1]+(b[1]-a[1])*f)*U*0.6+U*9.5, U*2.4*(1-Math.sin(f*Math.PI)*0.4), U*0.7, 0, 0, Math.PI*2); x.fill();
-      drawRuby(px, py, U*2.6, f*Math.PI*0.5, 1);
+      drawPiece(px, py, U*3.2, 0.65 + t*2.2, f*Math.PI*0.5, 0.3 + 0.3*Math.sin(t*9));
       if(f > 0.9) note("b"+i, 520 + i*90, 0.12, 0.07, "square");
     }
     // 2) le cube s'assemble (1,6 → 2,6 s) puis 3) le rubis plonge dedans (2,4 → 3 s)
     const asm = ez((t-1.6)/1.0), yaw = 0.65 + t*0.35, twist = t < 3 ? 0 : -ez((t-3)/0.5)*Math.PI/2, glow = t > 3.2 ? Math.max(0, 1 - (t-3.2)*1.4) : 0;
-    if(t > 1.6) drawCube(cx, cy - U*2, U*8.5*(1 + Math.max(0, t-3.6)*0.03), yaw, twist, asm, glow);
+    const CS = U*8.5*(1 + Math.max(0, t-3.6)*0.03), snapT = 2.98, sh = t > snapT && t < snapT+0.18 ? Math.sin((t-snapT)/0.18*Math.PI)*U*0.5 : 0;
+    if(t > 1.6) drawCube(cx, cy - U*2 + sh, CS, yaw, twist, asm, glow, t >= snapT, t >= snapT ? Math.max(0, 1-(t-snapT)*1.2) : 0);
     if(t > 1.6 && t < 1.9) note("asm", 196, 0.6, 0.05, "sine");
-    if(t >= 1.9 && t < 3.05){
-      const q = ez((t-1.9)/1.1), sx2 = cx + 16*U, sy2 = cy + U*8, ex = cx, ey = cy - U*14;
-      const px = sx2 + (ex-sx2)*q, py = sy2 + (ey-sy2)*q - Math.sin(q*Math.PI)*U*16 + (t>2.75 ? (t-2.75)/0.3*U*10 : 0);
-      drawRuby(px, py, U*2.6*(1 - Math.max(0,(t-2.75)/0.3)*0.6), q*Math.PI*2, t>2.95 ? 1-(t-2.95)/0.1 : 1);
+    if(t >= 1.9 && t < snapT){
+      // trajectoire : arc jusqu'au-dessus de la place vide, puis la pièce s'emboîte (petit recul puis clac)
+      const slotOut = proj([1.9,1.9,1.9], yaw, 0, cx, cy - U*2, CS), slot = proj([1,1,1], yaw, 0, cx, cy - U*2, CS);
+      const q = ez(Math.min(1, (t-1.9)/0.8)), sx2 = cx + 16*U, sy2 = cy + U*8;
+      let px = sx2 + (slotOut[0]-sx2)*q, py = sy2 + (slotOut[1]-sy2)*q - Math.sin(q*Math.PI)*U*14, sz = U*3.2 + (CS - U*3.2)*q, roll = (1-q)*Math.PI*3;
+      if(t > 2.7){ const k = (t-2.7)/(snapT-2.7), e2 = k < 0.55 ? -0.12*Math.sin(k/0.55*Math.PI) : Math.pow((k-0.55)/0.45, 2.2);
+        px = slotOut[0] + (slot[0]-slotOut[0])*e2; py = slotOut[1] + (slot[1]-slotOut[1])*e2; sz = CS; roll = 0; }
+      drawPiece(px, py, sz, yaw, roll, 0.35 + 0.3*Math.sin(t*12));
     }
     if(t > 3.0){ note("in", 880, 0.18, 0.08, "triangle"); note("clk", 1400, 0.05, 0.06, "square", 0.05); }
     if(t > 3.05 && t < 3.5){ const fl = 1 - (t-3.05)/0.45; x.globalCompositeOperation = "lighter"; const g = x.createRadialGradient(cx, cy-U*4, 0, cx, cy-U*4, U*30); g.addColorStop(0, `rgba(255,120,140,${0.7*fl})`); g.addColorStop(1,"rgba(255,0,40,0)"); x.fillStyle = g; x.fillRect(0,0,W2,H2); x.globalCompositeOperation = "source-over"; }
@@ -3661,13 +3726,13 @@ function playIntro(done){
     if(t > 3.5){
       const a = Math.min(1, (t-3.5)/0.6), ty = cy + U*19 + (1-a)*U*4;
       if(t > 3.55){ [523,659,784,1047].forEach((f,i)=>note("ch"+i, f, 1.4, 0.06, "triangle", i*0.07)); }
-      x.globalAlpha = a; x.textAlign = "center"; x.fillStyle = "#f5e6e8"; x.font = `${U*9}px Gothique, Georgia, serif`;
-      x.fillText("RUBYX", cx, ty);
+      x.globalAlpha = a; x.textAlign = "center"; x.fillStyle = "#f5e6e8"; x.font = `800 ${U*8.6}px "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`; if("letterSpacing" in x) x.letterSpacing = `${U*0.9}px`;
+      x.fillText("RUBYX", cx, ty); if("letterSpacing" in x) x.letterSpacing = "0px";
       x.font = `600 ${U*2.6}px system-ui, sans-serif`; x.fillStyle = "#e0103a";
       const st = "S T U D I O"; x.fillText(st, cx, ty + U*4.6);
       // reflet qui balaie le texte
       const sw2 = ((t-3.8)/0.9) * (U*60) - U*30;
-      if(t > 3.8 && t < 4.8){ x.globalCompositeOperation = "source-atop"; const g = x.createLinearGradient(cx+sw2-U*6, 0, cx+sw2+U*6, 0); g.addColorStop(0,"rgba(255,255,255,0)"); g.addColorStop(0.5,"rgba(255,255,255,.9)"); g.addColorStop(1,"rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(cx-U*30, ty-U*8, U*60, U*14); x.globalCompositeOperation = "source-over"; }
+      if(t > 3.8 && t < 4.8){ const g = x.createLinearGradient(cx+sw2-U*6, 0, cx+sw2+U*6, 0); g.addColorStop(0,"rgba(255,255,255,0)"); g.addColorStop(0.5,"rgba(255,255,255,.9)"); g.addColorStop(1,"rgba(255,255,255,0)"); x.fillStyle = g; x.globalCompositeOperation = "lighter"; x.font = `800 ${U*8.6}px "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`; if("letterSpacing" in x) x.letterSpacing = `${U*0.9}px`; x.fillText("RUBYX", cx, ty); if("letterSpacing" in x) x.letterSpacing = "0px"; x.globalCompositeOperation = "source-over"; }
       x.globalAlpha = 1;
     }
     if(t > 5.6) return finish();
